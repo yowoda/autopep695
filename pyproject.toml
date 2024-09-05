@@ -22,6 +22,10 @@ dependencies = [
     "libcst>=1.4.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/yowoda/pep695"
+Repository = "https://github.com/yowoda/pep695"
+
 [project.scripts]
 pep695 = "pep695.cli:main"
 
