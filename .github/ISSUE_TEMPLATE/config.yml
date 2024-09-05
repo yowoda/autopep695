@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discussions
+    url: https://github.com/yowoda/pep695/discussions
+    about: A perfect place to ask questions and get help with issues you are having.

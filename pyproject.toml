@@ -1,0 +1,41 @@
+[build-system]
+requires = ["flit_core >=3.9,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "pep695"
+readme = "README.md"
+description = "Automatically upgrade to the new type syntax introduced in PEP 695 using a single command"
+requires-python = ">=3.9"
+authors = [{name = "yowoda", email = "yodarlswitch@gmail.com"}]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+license = { file = "LICENSE" }
+dynamic = ["version"]
+dependencies = [
+    "libcst>=1.4.0",
+]
+
+[project.scripts]
+pep695 = "pep695.cli:main"
+
+[project.optional-dependencies]
+dev = ["nox==2024.4.15"]
+"dev.format" = ["ruff>=0.6.3, <0.7"]
+"dev.typecheck" =  ["pyright==1.1.379"]
+"dev.release" = ["flit==3.9.0"]
+"dev.slotscheck" = ["slotscheck>=0.19.0, <1"]
+
+[tool.flit.module]
+name = "pep695"
+
+
+[tool.pyright]
+include = ["pep695"]
+typeCheckingMode = "strict"
