@@ -39,7 +39,7 @@ def run(version_type: str, increment: str) -> None:
     new_version = f"{major}.{minor}.{patch}"
 
     updated_file_content = VERSION_REGEX.sub(f'__version__ = "{new_version}"', content)
-    with open("pep695/__init__.py", "w") as fp:
+    with open("autopep695/__init__.py", "w") as fp:
         fp.write(updated_file_content)
 
 if __name__ == "__main__":
