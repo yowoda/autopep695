@@ -167,3 +167,5 @@ cython_debug/
 # testing
 manual_testing
 testing
+
+pep695
