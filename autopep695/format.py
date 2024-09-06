@@ -6,6 +6,7 @@ from libcst import matchers as m
 from autopep695.base import BaseVisitor, GenericInfo, ProtocolInfo, _TYPE_PARAM_CLASSES
 from autopep695.aliases import get_qualified_name
 
+
 class PEP695Formatter(BaseVisitor):
     def leave_Assign(
         self, original_node: cst.Assign, updated_node: cst.Assign
@@ -41,7 +42,7 @@ class PEP695Formatter(BaseVisitor):
             self._new_paramspecs_for_node[original_node],
             self._new_typevartuples_for_node[original_node],
         )
-    
+
     @m.call_if_inside(
         m.ClassDef(bases=[m.AtLeastN(n=1)])
     )  # Match type subscript in class base
@@ -50,17 +51,16 @@ class PEP695Formatter(BaseVisitor):
     ) -> t.Union[cst.Arg, cst.RemovalSentinel]:
         if not m.matches(original_node, m.Arg(m.Subscript(m.Attribute() | m.Name()))):
             return updated_node
-        
+
         subscript = cst.ensure_type(original_node.value, cst.Subscript)
 
         name = get_qualified_name(subscript.value)
-        
 
         if name in self._type_collection.get(GenericInfo).aliases:
             for param in _TYPE_PARAM_CLASSES:
                 if self._resolve_symbols_used(
                     self._type_collection.get(param).symbols,
-                    predicate=lambda sym: self._contains_symbol_name(subscript, sym)
+                    predicate=lambda sym: self._contains_symbol_name(subscript, sym),
                 ):
                     return cst.RemoveFromParent()
 
@@ -68,7 +68,7 @@ class PEP695Formatter(BaseVisitor):
             for param in _TYPE_PARAM_CLASSES:
                 if self._resolve_symbols_used(
                     self._type_collection.get(param).symbols,
-                    predicate=lambda sym: self._contains_symbol_name(subscript, sym)
+                    predicate=lambda sym: self._contains_symbol_name(subscript, sym),
                 ):
                     return updated_node.with_changes(
                         value=cst.ensure_type(original_node.value, cst.Subscript).value

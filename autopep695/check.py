@@ -129,6 +129,10 @@ class CheckPEP695Visitor(BaseVisitor):
         )
         assert report is not None
         logging.error("%s", report.format())
+        logging.warning(
+            f"Type assignments using the `{BOLD}{BLUE}type{RESET}` keyword are not equivalent to `{BOLD}{BLUE}TypeAlias{RESET}` "
+            f"at runtime. A rewrite using `{BOLD}{BLUE}autopep695 format{RESET}` can have side-effects.\n"
+        )
 
     def _report_if_requires_change(
         self, node: t.Union[cst.FunctionDef, cst.ClassDef], message: str

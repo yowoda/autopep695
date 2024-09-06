@@ -9,7 +9,12 @@ import typing as t
 import libcst as cst
 from libcst import matchers as m
 
-from autopep695.symbols import Symbol, TypeVarSymbol, ParamSpecSymbol, TypeVarTupleSymbol
+from autopep695.symbols import (
+    Symbol,
+    TypeVarSymbol,
+    ParamSpecSymbol,
+    TypeVarTupleSymbol,
+)
 from autopep695.aliases import AliasCollection, get_qualified_name
 
 _SupportsTypeParamaterT = t.TypeVar(
@@ -452,6 +457,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         return updated_node.with_changes(type_parameters=cst.TypeParameters(params))
 
+
 class RemoveGenericBaseMixin(m.MatcherDecoratableTransformer):
     _type_collection: TypeClassCollection
 
@@ -469,7 +475,6 @@ class RemoveGenericBaseMixin(m.MatcherDecoratableTransformer):
         )
 
         if name in self._type_collection.get(GenericInfo).aliases:
-
             return cst.RemoveFromParent()
 
         if name in self._type_collection.get(ProtocolInfo).aliases:
