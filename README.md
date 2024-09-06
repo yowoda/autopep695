@@ -32,7 +32,7 @@ Rewrite the code to the new type parameter syntax by running the `format` subcom
 
 It is recommended to specify the `--parallel` (`-p`) flag if you're running `format` against a large codebase as the tool is written in pure python and is not optimized for speed. This way, the workload is distributed across multiple subprocesses, each spawning a new python interpreter that formats the assigned files.
 
-# What `autopep695` does and what it doesn't
+# What `autopep695` does and doesn't do
 
 `autopep695` does:
 - Remove assignments that instantiate `TypeVar`s, `ParamSpec`s or `TypeVarTuple`s from `typing` or `typing_extensions`
