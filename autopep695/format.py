@@ -3,8 +3,8 @@ import typing as t
 import libcst as cst
 from libcst import matchers as m
 
-from pep695.base import BaseVisitor, GenericInfo, ProtocolInfo, _TYPE_PARAM_CLASSES
-from pep695.aliases import get_qualified_name
+from autopep695.base import BaseVisitor, GenericInfo, ProtocolInfo, _TYPE_PARAM_CLASSES
+from autopep695.aliases import get_qualified_name
 
 class PEP695Formatter(BaseVisitor):
     def leave_Assign(

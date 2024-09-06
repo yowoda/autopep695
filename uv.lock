@@ -11,6 +11,41 @@ wheels = [
 ]
 
 [[package]]
+name = "autopep695"
+version = "0.0.1"
+source = { editable = "." }
+dependencies = [
+    { name = "libcst" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "nox" },
+]
+dev-format = [
+    { name = "ruff" },
+]
+dev-release = [
+    { name = "flit" },
+]
+dev-slotscheck = [
+    { name = "slotscheck" },
+]
+dev-typecheck = [
+    { name = "pyright" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "flit", marker = "extra == 'dev-release'", specifier = "==3.9.0" },
+    { name = "libcst", specifier = ">=1.4.0" },
+    { name = "nox", marker = "extra == 'dev'", specifier = "==2024.4.15" },
+    { name = "pyright", marker = "extra == 'dev-typecheck'", specifier = "==1.1.379" },
+    { name = "ruff", marker = "extra == 'dev-format'", specifier = ">=0.6.3,<0.7" },
+    { name = "slotscheck", marker = "extra == 'dev-slotscheck'", specifier = ">=0.19.0,<1" },
+]
+
+[[package]]
 name = "certifi"
 version = "2024.8.30"
 source = { registry = "https://pypi.org/simple" }
@@ -248,41 +283,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/51/65/50db4dda066951078f0a96cf12f4b9ada6e4b811516bf0262c0f4f7064d4/packaging-24.1.tar.gz", hash = "sha256:026ed72c8ed3fcce5bf8950572258698927fd1dbda10a5e981cdf0ac37f4f002", size = 148788 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/08/aa/cc0199a5f0ad350994d660967a8efb233fe0416e4639146c089643407ce6/packaging-24.1-py3-none-any.whl", hash = "sha256:5b8f2217dbdbd2f7f384c41c628544e6d52f2d0f53c6d0c3ea61aa5d1d7ff124", size = 53985 },
-]
-
-[[package]]
-name = "pep695"
-version = "0.0.1"
-source = { editable = "." }
-dependencies = [
-    { name = "libcst" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "nox" },
-]
-dev-format = [
-    { name = "ruff" },
-]
-dev-release = [
-    { name = "flit" },
-]
-dev-slotscheck = [
-    { name = "slotscheck" },
-]
-dev-typecheck = [
-    { name = "pyright" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "flit", marker = "extra == 'dev-release'", specifier = "==3.9.0" },
-    { name = "libcst", specifier = ">=1.4.0" },
-    { name = "nox", marker = "extra == 'dev'", specifier = "==2024.4.15" },
-    { name = "pyright", marker = "extra == 'dev-typecheck'", specifier = "==1.1.379" },
-    { name = "ruff", marker = "extra == 'dev-format'", specifier = ">=0.6.3,<0.7" },
-    { name = "slotscheck", marker = "extra == 'dev-slotscheck'", specifier = ">=0.19.0,<1" },
 ]
 
 [[package]]

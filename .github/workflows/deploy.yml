@@ -40,7 +40,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Bump version"
-          file_pattern: "pep695/*.py"
+          file_pattern: "autopep695/*.py"
 
       - name: Upload to PyPI
         env:

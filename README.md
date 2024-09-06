@@ -5,36 +5,36 @@ Rewriting your codebase manually to comply with PEP 695 can be very tiring and c
 # Installation
 Using `pip`:
 ```
-pip install pep695
+pip install autopep695
 ```
 Using [uv](https://docs.astral.sh/uv/):
 ```
-uv tool install pep695
+uv tool install autopep695
 ```
 Or if you want to run the tool immediately you can use:
 ```
-uvx pep695
+uvx autopep695
 ```
 
 # Usage
 
-`pep695` has 2 important commands for you to use on your codebase
+`autopep695` has 2 important commands for you to use on your codebase
 
-## `pep695 check`
+## `autopep695 check`
 Check whether the code makes use of the new type parameter syntax. If not, informative errors are shown that describe the problem (e.g. A class inherits from `typing.Generic[T]`) and include the "proper" implementation using the concepts described in PEP 695.
 
-`pep695 check` accepts multiple paths either pointing to a valid directory or a valid file that contains the code to be checked. A file is valid if it has one of the following extensions: `.py`, `.pyi`. Directories are traversed recursively.
+`autopep695 check` accepts multiple paths either pointing to a valid directory or a valid file that contains the code to be checked. A file is valid if it has one of the following extensions: `.py`, `.pyi`. Directories are traversed recursively.
 
 You can also specify the `--silent` (`-s`) flag that silences the errors logged and only shows the number of errors reported.
 
-## `pep695 format`
-Rewrite the code to the new type parameter syntax by running the `format` subcommand. This will implement all the suggestions reported in `pep695 check`, so running `pep695 check` after `pep695 format` will not report any errors. `format` however does not require you to run `check` beforehand, it just matches its behaviour.
+## `autopep695 format`
+Rewrite the code to the new type parameter syntax by running the `format` subcommand. This will implement all the suggestions reported in `autopep695 check`, so running `autopep695 check` after `autopep695 format` will not report any errors. `format` however does not require you to run `check` beforehand, it just matches its behaviour.
 
 It is recommended to specify the `--parallel` (`-p`) flag if you're running `format` against a large codebase as the tool is written in pure python and is not optimized for speed. This way, the workload is distributed across multiple subprocesses, each spawning a new python interpreter that formats the assigned files.
 
-# What `pep695` does and what it doesn't
+# What `autopep695` does and what it doesn't
 
-`pep695` does:
+`autopep695` does:
 - Remove assignments that instantiate `TypeVar`s, `ParamSpec`s or `TypeVarTuple`s from `typing` or `typing_extensions`
 - Rewrite type alias statements that are annotated using `typing.TypeAlias` or `typing_extensions.TypeAlias` to a `type` assigment e.g.:
 ```py
@@ -121,8 +121,8 @@ class A(t.Generic[T]): ...
 ```
 will remain the exact same
 
-`pep695` does not:
+`autopep695` does not:
 - Remove unused imports once type assignments are removed, that's out of scope for this project.
 - Does not neccesarily follow the style of your next best linter
 
-It is best to format the code with a tool like [ruff](https://docs.astral.sh/ruff/) after running `pep695 format`.
+It is best to format the code with a tool like [ruff](https://docs.astral.sh/ruff/) after running `autopep695 format`.

@@ -4,7 +4,7 @@ import nox
 from nox import options
 
 SCRIPT_PATHS = [
-    os.path.join(".", "pep695"),
+    os.path.join(".", "autopep695"),
     "noxfile.py",
 ]
 
@@ -36,4 +36,4 @@ def typecheck(session: nox.Session) -> None:
 @nox.session()
 def slotscheck(session: nox.Session) -> None:
     session.install(".[dev.slotscheck]")
-    session.run("python", "-m", "slotscheck", "-m", "pep695")
+    session.run("python", "-m", "slotscheck", "-m", "autopep695")

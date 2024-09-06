@@ -9,9 +9,9 @@ import typing as t
 import libcst as cst
 from libcst.metadata import PositionProvider
 
-from pep695.check import CheckPEP695Visitor
-from pep695.format import PEP695Formatter
-from pep695.ux import init_logging, BOLD, RESET, BLUE
+from autopep695.check import CheckPEP695Visitor
+from autopep695.format import PEP695Formatter
+from autopep695.ux import init_logging, BOLD, RESET, BLUE
 
 if t.TYPE_CHECKING:
     from pathlib import Path

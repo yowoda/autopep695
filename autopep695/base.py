@@ -9,8 +9,8 @@ import typing as t
 import libcst as cst
 from libcst import matchers as m
 
-from pep695.symbols import Symbol, TypeVarSymbol, ParamSpecSymbol, TypeVarTupleSymbol
-from pep695.aliases import AliasCollection, get_qualified_name
+from autopep695.symbols import Symbol, TypeVarSymbol, ParamSpecSymbol, TypeVarTupleSymbol
+from autopep695.aliases import AliasCollection, get_qualified_name
 
 _SupportsTypeParamaterT = t.TypeVar(
     "_SupportsTypeParamaterT", cst.FunctionDef, cst.ClassDef, cst.TypeAlias

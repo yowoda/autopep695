@@ -1,8 +1,8 @@
 import argparse
 from pathlib import Path
 
-from pep695 import analyzer, __version__
-from pep695.ux import init_logging, RED, RESET, BLUE, BOLD
+from autopep695 import analyzer, __version__
+from autopep695.ux import init_logging, RED, RESET, BLUE, BOLD
 
 
 def main() -> None:
@@ -33,7 +33,7 @@ def main() -> None:
     format_parser = subparsers.add_parser(
         "format",
         help="Format the code to comply with pep695",
-        description="Implement suggestions made by `pep695 check`",
+        description="Implement suggestions made by `autopep695 check`",
     )
     format_parser.add_argument(
         "paths",
@@ -69,7 +69,7 @@ def main() -> None:
 
         else:
             print(
-                f"Found {BOLD}{RED}{errors}{RESET} errors. Fix them using `{BOLD}{BLUE}pep695 format{RESET}`."
+                f"Found {BOLD}{RED}{errors}{RESET} errors. Fix them using `{BOLD}{BLUE}autopep695 format{RESET}`."
             )
 
     elif args.subparser == "format":
@@ -84,6 +84,6 @@ def main() -> None:
         py_ver = platform.python_version()
         py_compiler = platform.python_compiler()
         plat_info = platform.uname()
-        print(f"pep695 {__version__} at {path}")
+        print(f"autopep695 {__version__} at {path}")
         print(f"{py_impl} {py_ver} {py_compiler}")
         print(f"{plat_info.system} {plat_info.version} {plat_info.machine}")

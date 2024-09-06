@@ -8,11 +8,11 @@ import libcst as cst
 from libcst import matchers as m
 from libcst.metadata import PositionProvider, CodeRange
 
-from pep695.ux import BOLD, RESET, YELLOW, RED, GREEN, BLUE
-from pep695.base import BaseVisitor, RemoveGenericBaseMixin
+from autopep695.ux import BOLD, RESET, YELLOW, RED, GREEN, BLUE
+from autopep695.base import BaseVisitor, RemoveGenericBaseMixin
 
 if t.TYPE_CHECKING:
-    from pep695.base import TypeClassCollection
+    from autopep695.base import TypeClassCollection
 
 
 @dataclass(frozen=True)

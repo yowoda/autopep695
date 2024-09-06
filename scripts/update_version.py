@@ -1,16 +1,15 @@
 import argparse
 import re
-import sys
 
 VERSION_REGEX = re.compile(r"__version__\s*=\s*\"(?P<version>\d+.\d+.\d+)\"")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("type", choices=["major", "minor", "patch", "alpha"])
+parser.add_argument("type", choices=["major", "minor", "patch"])
 parser.add_argument("increment")
 
-_noop = lambda n: n  # noqa: E731
-_increment = lambda n: str(int(n) + 1)  # noqa: E731
-_reset = lambda _: "0"  # noqa: E731
+_noop = lambda n: n
+_increment = lambda n: str(int(n) + 1)
+_reset = lambda _: "0"
 
 ACTIONS = {
     "major": (_increment, _reset, _reset),
@@ -20,7 +19,7 @@ ACTIONS = {
 
 
 def run(version_type: str, increment: str) -> None:
-    with open("pep695/__init__.py") as fp:
+    with open("autopep695/__init__.py") as fp:
         content = fp.read()
 
     current_version = VERSION_REGEX.search(content)
