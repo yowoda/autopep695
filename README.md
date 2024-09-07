@@ -66,7 +66,7 @@ import typing as t
 from collections.abc import Callable
 
 T = t.TypeVar("T")
-P = ParamSpec("P")
+P = t.ParamSpec("P")
 
 def func(callback: Callable[P, T]) -> T: ...
 ```
