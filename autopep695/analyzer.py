@@ -40,7 +40,7 @@ def format_code(code: str) -> str:
 
 def _format_file(path: Path) -> None:
     logging.debug("Analyzing file %s", debug_path_format(path))
-    with open(path, "r+") as f:
+    with open(path, "r+", encoding="utf-8") as f:
         code = format_code(f.read())
         f.seek(0)
         f.write(code)
@@ -128,7 +128,7 @@ def _check_code(code: str, file_path: str, silent: bool) -> int:
 
 def _check_file(path: Path, silent: bool) -> int:
     logging.debug("Analyzing file %s", debug_path_format(path))
-    with open(path, "r+") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return _check_code(f.read(), str(path), silent)
 
 
