@@ -8,17 +8,19 @@ import libcst as cst
 from libcst import matchers as m
 from libcst.metadata import PositionProvider, CodeRange
 
-from autopep695.ux import BOLD, RESET, YELLOW, RED, GREEN, BLUE
+from autopep695.ux import BOLD, RESET, YELLOW, RED, GREEN, format_special
 from autopep695.base import BaseVisitor, RemoveGenericBaseMixin
 
 if t.TYPE_CHECKING:
+    from pathlib import Path
+
     from autopep695.base import TypeClassCollection
 
 
 @dataclass(frozen=True)
 class Diagnostic:
     message: str
-    file_path: str
+    file_path: Path
     line: int
     column: int
     old_code: str
@@ -28,7 +30,7 @@ class Diagnostic:
         old_code_lines = self._format_code("- ", self.old_code.strip())
         new_code_lines = self._format_code("+ ", self.new_code.strip())
         return (
-            f"\n{BOLD}{BLUE}{self.file_path}{RESET}:{BOLD}{YELLOW}{self.line}{RESET}:{BOLD}{YELLOW}{self.column}{RESET}: {self.message}\n"
+            f"\n{format_special(self.file_path, wrap='')}:{BOLD}{YELLOW}{self.line}{RESET}:{BOLD}{YELLOW}{self.column}{RESET}: {self.message}\n"
             + f"{BOLD}{RED}{old_code_lines}\n"
             + f"{GREEN}{new_code_lines}{RESET}\n"
         )
@@ -68,13 +70,12 @@ class FixClassDefFormattingTransformer(
 
 
 class CheckPEP695Visitor(BaseVisitor):
-    def __init__(self, file_path: str, *, silent: bool) -> None:
-        self._file_path = file_path
+    def __init__(self, file_path: Path, silent: bool) -> None:
         self._errors = 0
         self._silent = silent
         self._empty_module = cst.Module(body=())
 
-        super().__init__()
+        super().__init__(file_path=file_path)
 
     @property
     def errors(self) -> int:
@@ -130,8 +131,8 @@ class CheckPEP695Visitor(BaseVisitor):
         assert report is not None
         logging.error("%s", report.format())
         logging.warning(
-            f"Type assignments using the `{BOLD}{BLUE}type{RESET}` keyword are not equivalent to `{BOLD}{BLUE}TypeAlias{RESET}` "
-            f"at runtime. A rewrite using `{BOLD}{BLUE}autopep695 format{RESET}` can have side-effects.\n"
+            f"Type assignments using the {format_special('type', '`')} keyword are not equivalent to {format_special('TypeAlias', '`')} "
+            f"at runtime. A rewrite using {format_special('autopep695 format', '`')} can have side-effects.\n"
         )
 
     def _report_if_requires_change(

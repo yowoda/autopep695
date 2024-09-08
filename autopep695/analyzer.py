@@ -11,44 +11,55 @@ from libcst.metadata import PositionProvider
 
 from autopep695.check import CheckPEP695Visitor
 from autopep695.format import PEP695Formatter
-from autopep695.ux import init_logging, BOLD, RESET, BLUE
+from autopep695.ux import init_logging, format_special
+from autopep695.errors import ParsingError
 
 if t.TYPE_CHECKING:
     from pathlib import Path
 
-
-def debug_path_format(path: Path) -> str:
-    return f"'{BOLD}{BLUE}{path}{RESET}'"
-
-
 def _check_valid_paths(paths: t.Iterable[Path]) -> bool:
     for path in paths:
         if not path.exists():
-            logging.error(f"The specified path '{path}' does not exist.")
+            logging.error(f"The specified path {format_special(path)} does not exist.")
             return False
 
     return True
 
+def _file_aware_parse_code(code: str, path: Path) -> cst.Module:
+    try:
+        tree = cst.parse_module(code)
+    
+    except Exception as e:
+        logging.error(f"Failed parsing code from {format_special(path)}\n{e}")
+        logging.debug("Full Traceback for the error above:", exc_info=e)
+        raise ParsingError
 
-def format_code(code: str) -> str:
-    tree: cst.Module = cst.parse_module(code)
-    transformer = PEP695Formatter()
+    return tree
+
+def format_code(code: str, file_path: Path) -> str:
+    tree = _file_aware_parse_code(code, file_path)
+    transformer = PEP695Formatter(file_path)
     new_tree = tree.visit(transformer)
 
     return new_tree.code
 
 
 def _format_file(path: Path) -> None:
-    logging.debug("Analyzing file %s", debug_path_format(path))
-    with open(path, "r+", encoding="utf-8") as f:
-        code = format_code(f.read())
+    logging.debug("Analyzing file %s", format_special(path))
+    with path.open("r+", encoding="utf-8") as f:
+        try:
+            code = format_code(f.read(), path)
+
+        except ParsingError: # catch the exception so the file can be skipped and the whole process isn't terminated
+            return
+        
         f.seek(0)
         f.write(code)
         f.truncate()
 
 
 def _format_dir(path: Path) -> None:
-    logging.debug("Analyzing directory %s", debug_path_format(path))
+    logging.debug("Analyzing directory %s", format_special(path))
     for p in path.iterdir():
         if p.is_dir():
             _format_dir(p)
@@ -114,8 +125,8 @@ def format_paths(paths: t.Iterable[Path], parallel: t.Union[bool, int]) -> None:
             _format_dir(path)
 
 
-def _check_code(code: str, file_path: str, silent: bool) -> int:
-    tree = cst.parse_module(code)
+def _check_code(code: str, file_path: Path, silent: bool) -> int:
+    tree = _file_aware_parse_code(code, file_path)
     if not silent:
         setattr(CheckPEP695Visitor, "METADATA_DEPENDENCIES", (PositionProvider,))
         tree = cst.MetadataWrapper(tree)  # type: ignore
@@ -127,14 +138,17 @@ def _check_code(code: str, file_path: str, silent: bool) -> int:
 
 
 def _check_file(path: Path, silent: bool) -> int:
-    logging.debug("Analyzing file %s", debug_path_format(path))
-    with open(path, "r", encoding="utf-8") as f:
-        return _check_code(f.read(), str(path), silent)
+    logging.debug("Analyzing file %s", format_special(path))
+    try:
+        return _check_code(path.read_text(encoding="utf-8"), path, silent)
+    
+    except ParsingError:
+        return 0
 
 
 def _check_dir(path: Path, silent: bool) -> int:
     errors = 0
-    logging.debug("Analyzing directory %s", debug_path_format(path))
+    logging.debug("Analyzing directory %s", format_special(path))
     for p in path.iterdir():
         if p.is_dir():
             errors += _check_dir(p, silent)

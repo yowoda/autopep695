@@ -1,10 +1,11 @@
 import argparse
+import sys
 from pathlib import Path
 
 from colorama import just_fix_windows_console
 
 from autopep695 import analyzer, __version__
-from autopep695.ux import init_logging, RED, RESET, BLUE, BOLD
+from autopep695.ux import init_logging, RED, RESET, BOLD, format_special
 
 
 def main() -> None:
@@ -32,6 +33,12 @@ def main() -> None:
         action="store_true",
         help="Whether to silent the error reports.",
     )
+    check_parser.add_argument(
+        "-d", "--debug",
+        help="Show debug information such as files analyzed",
+        action="store_true",
+        required=False
+    )
     format_parser = subparsers.add_parser(
         "format",
         help="Format the code to comply with pep695",
@@ -54,6 +61,12 @@ def main() -> None:
         type=int,
         help="Whether to process the files in parallel. Specify an integer to set the number of processes used.",
     )
+    format_parser.add_argument(
+        "-d", "--debug",
+        help="Show debug information such as files analyzed",
+        action="store_true",
+        required=False
+    )
     subparsers.add_parser("info", help="Show information related to the tool")
 
     args = parser.parse_args()
@@ -64,7 +77,7 @@ def main() -> None:
         parser.print_help()
 
     elif args.subparser == "check":
-        init_logging(silent=args.silent)
+        init_logging(debug=args.debug, silent=args.silent)
         errors = analyzer.check_paths(args.paths, args.silent)
         if errors is None:
             return
@@ -73,11 +86,15 @@ def main() -> None:
             print("All checks passed!")
 
         else:
+            suffix = "s" if errors > 1 else ""
+            pronoun = "them" if errors > 1 else "it"
             print(
-                f"Found {BOLD}{RED}{errors}{RESET} errors. Fix them using `{BOLD}{BLUE}autopep695 format{RESET}`."
+                f"Found {BOLD}{RED}{errors}{RESET} error{suffix}. Fix {pronoun} using {format_special('autopep695 format', '`')}."
             )
+            sys.exit(1)
 
     elif args.subparser == "format":
+        init_logging(debug=args.debug)
         analyzer.format_paths(args.paths, args.parallel)
 
     elif args.subparser == "info":

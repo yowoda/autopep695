@@ -1,5 +1,10 @@
+from __future__ import annotations
+
 import logging
 import typing as t
+
+if t.TYPE_CHECKING:
+    from pathlib import Path
 
 RESET = "\33[0m"
 
@@ -38,3 +43,7 @@ def init_logging(debug: bool = False, silent: bool = False) -> None:
 
     if silent is True:
         logging.disable(logging.ERROR)
+
+# Unfortunately the pathlib.Path implementation as the factory is platform-dependent
+def format_special(path: t.Union[Path, str], wrap: str ="'") -> str:
+    return f"{wrap}{BOLD}{BLUE}{path}{RESET}{wrap}"

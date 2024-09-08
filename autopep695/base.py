@@ -17,6 +17,9 @@ from autopep695.symbols import (
 )
 from autopep695.aliases import AliasCollection, get_qualified_name
 
+if t.TYPE_CHECKING:
+    from pathlib import Path
+
 _SupportsTypeParamaterT = t.TypeVar(
     "_SupportsTypeParamaterT", cst.FunctionDef, cst.ClassDef, cst.TypeAlias
 )
@@ -182,7 +185,9 @@ class TypeClassCollection:
 
 
 class BaseVisitor(m.MatcherDecoratableTransformer):
-    def __init__(self) -> None:
+    def __init__(self, file_path: Path) -> None:
+        self._file_path = file_path
+        
         self._type_collection = TypeClassCollection()
 
         self._new_typevars_for_node: dict[
