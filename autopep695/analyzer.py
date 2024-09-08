@@ -115,7 +115,7 @@ def format_paths(paths: t.Iterable[Path], parallel: t.Union[bool, int]) -> None:
 
 
 def _check_code(code: str, file_path: str, silent: bool) -> int:
-    tree: cst.Module = cst.parse_module(code)
+    tree = cst.parse_module(code)
     if not silent:
         setattr(CheckPEP695Visitor, "METADATA_DEPENDENCIES", (PositionProvider,))
         tree = cst.MetadataWrapper(tree)  # type: ignore

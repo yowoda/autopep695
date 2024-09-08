@@ -12,9 +12,10 @@ wheels = [
 
 [[package]]
 name = "autopep695"
-version = "0.0.1"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "colorama" },
     { name = "libcst" },
 ]
 
@@ -37,6 +38,7 @@ dev-typecheck = [
 
 [package.metadata]
 requires-dist = [
+    { name = "colorama", specifier = ">=0.4.6,<1" },
     { name = "flit", marker = "extra == 'dev-release'", specifier = "==3.9.0" },
     { name = "libcst", specifier = ">=1.4.0" },
     { name = "nox", marker = "extra == 'dev'", specifier = "==2024.4.15" },

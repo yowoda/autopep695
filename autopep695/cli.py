@@ -1,6 +1,8 @@
 import argparse
 from pathlib import Path
 
+from colorama import just_fix_windows_console
+
 from autopep695 import analyzer, __version__
 from autopep695.ux import init_logging, RED, RESET, BLUE, BOLD
 
@@ -55,6 +57,9 @@ def main() -> None:
     subparsers.add_parser("info", help="Show information related to the tool")
 
     args = parser.parse_args()
+
+    just_fix_windows_console()
+
     if args.subparser is None:
         parser.print_help()
 

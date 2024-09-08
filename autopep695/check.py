@@ -70,7 +70,7 @@ class FixClassDefFormattingTransformer(
 class CheckPEP695Visitor(BaseVisitor):
     def __init__(self, file_path: str, *, silent: bool) -> None:
         self._file_path = file_path
-        self._errors: int = 0
+        self._errors = 0
         self._silent = silent
         self._empty_module = cst.Module(body=())
 
