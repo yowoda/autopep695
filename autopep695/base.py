@@ -320,7 +320,10 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
         return new_node
 
     def _should_ignore_statement(self, node: cst.CSTNode) -> bool:
-        parent = cst.ensure_type(self._node_to_parent[node], cst.SimpleStatementLine)
+        parent = self._node_to_parent[node]
+        if not isinstance(parent, (cst.SimpleStatementLine, cst.SimpleStatementSuite)):
+            return False
+
         if (
             comment := parent.trailing_whitespace.comment
         ) is not None and comment.value[1:].strip() in _IGNORE_COMMENTS_RULES:

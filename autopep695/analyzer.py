@@ -19,12 +19,21 @@ if t.TYPE_CHECKING:
     from pathlib import Path
 
 
+def _show_debug_traceback_note():
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        return ""
+
+    return f"View the full traceback by passing the {format_special('--debug', '`')} flag\n"
+
+
 def _file_aware_parse_code(code: str, path: Path) -> cst.Module:
     try:
         tree = cst.parse_module(code)
 
     except Exception as e:
-        logging.error(f"Failed parsing code from {format_special(path)}\n{e}")
+        logging.error(
+            f"Failed parsing code from {format_special(path)}\n{e}\n{_show_debug_traceback_note()}"
+        )
         logging.debug("Full Traceback for the error above:", exc_info=e)
         raise ParsingError
 
@@ -46,6 +55,13 @@ def _format_file(path: Path, *, unsafe: bool) -> None:
             code = format_code(f.read(), file_path=path, unsafe=unsafe)
 
         except ParsingError:  # catch the exception so the file can be skipped and the whole process isn't terminated
+            return
+
+        except Exception as e:
+            logging.error(
+                f"Internal error while formatting code in {format_special(path)}\n{_show_debug_traceback_note()}"
+            )
+            logging.debug("Full traceback for the error above:", exc_info=e)
             return
 
         f.seek(0)
@@ -127,6 +143,13 @@ def _check_file(path: Path, *, silent: bool) -> int:
         )
 
     except ParsingError:
+        return 0
+
+    except Exception as e:
+        logging.error(
+            f"Internal error while formatting code in {format_special(path)}\n{_show_debug_traceback_note()}"
+        )
+        logging.debug("Full traceback for the error above:", exc_info=e)
         return 0
 
 
