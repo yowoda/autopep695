@@ -34,10 +34,11 @@ def main() -> None:
         help="Whether to silent the error reports.",
     )
     check_parser.add_argument(
-        "-d", "--debug",
+        "-d",
+        "--debug",
         help="Show debug information such as files analyzed",
         action="store_true",
-        required=False
+        required=False,
     )
     format_parser = subparsers.add_parser(
         "format",
@@ -52,6 +53,13 @@ def main() -> None:
         default=[Path.cwd()],
     )
     format_parser.add_argument(
+        "-u",
+        "--unsafe",
+        required=False,
+        action="store_true",
+        help="Whether to apply unsafe fixes such as type assignments",
+    )
+    format_parser.add_argument(
         "-p",
         "--parallel",
         required=False,
@@ -62,10 +70,11 @@ def main() -> None:
         help="Whether to process the files in parallel. Specify an integer to set the number of processes used.",
     )
     format_parser.add_argument(
-        "-d", "--debug",
+        "-d",
+        "--debug",
         help="Show debug information such as files analyzed",
         action="store_true",
-        required=False
+        required=False,
     )
     subparsers.add_parser("info", help="Show information related to the tool")
 
@@ -78,7 +87,7 @@ def main() -> None:
 
     elif args.subparser == "check":
         init_logging(debug=args.debug, silent=args.silent)
-        errors = analyzer.check_paths(args.paths, args.silent)
+        errors = analyzer.check_paths(args.paths, silent=args.silent)
         if errors is None:
             return
 
@@ -95,7 +104,7 @@ def main() -> None:
 
     elif args.subparser == "format":
         init_logging(debug=args.debug)
-        analyzer.format_paths(args.paths, args.parallel)
+        analyzer.format_paths(args.paths, parallel=args.parallel, unsafe=args.unsafe)
 
     elif args.subparser == "info":
         import os

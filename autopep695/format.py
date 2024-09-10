@@ -1,13 +1,47 @@
+from __future__ import annotations
+
+import functools
 import typing as t
+from typing_extensions import ParamSpec, Concatenate
 
 import libcst as cst
 from libcst import matchers as m
 
-from autopep695.base import BaseVisitor, GenericInfo, ProtocolInfo, _TYPE_PARAM_CLASSES
+from autopep695.base import BaseVisitor, GenericInfo, ProtocolInfo, TYPE_PARAM_CLASSES
 from autopep695.aliases import get_qualified_name
+
+if t.TYPE_CHECKING:
+    from pathlib import Path
+
+_T = t.TypeVar("_T")
+_P = ParamSpec("_P")
+_ClassT = t.TypeVar("_ClassT", bound="PEP695Formatter")
+
+
+def unsafe(
+    func: t.Callable[Concatenate[_ClassT, _P], _T],
+) -> t.Callable[Concatenate[_ClassT, _P], _T]:
+    """
+    A decorator to mark `leave_*` functions as unsafe.
+    The function will only run if the --unsafe flag was passed when running `autopep695 format`
+    """
+
+    @functools.wraps(func)
+    def inner(self: _ClassT, *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        if self.unsafe is False:
+            return t.cast(_T, kwargs.get("updated_node") or args[1])
+
+        return func(self, *args, **kwargs)
+
+    return inner
 
 
 class PEP695Formatter(BaseVisitor):
+    def __init__(self, file_path: Path, *, unsafe: bool) -> None:
+        self.unsafe = unsafe
+
+        super().__init__(file_path=file_path)
+
     def leave_Assign(
         self, original_node: cst.Assign, updated_node: cst.Assign
     ) -> t.Union[cst.RemovalSentinel, cst.Assign]:
@@ -20,6 +54,12 @@ class PEP695Formatter(BaseVisitor):
             return cst.RemoveFromParent()
 
         return updated_node
+
+    @unsafe
+    def leave_AnnAssign(
+        self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
+    ) -> t.Union[cst.AnnAssign, cst.TypeAlias]:
+        return super().leave_AnnAssign(original_node, updated_node)
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -57,7 +97,7 @@ class PEP695Formatter(BaseVisitor):
         name = get_qualified_name(subscript.value)
 
         if name in self._type_collection.get(GenericInfo).aliases:
-            for param in _TYPE_PARAM_CLASSES:
+            for param in TYPE_PARAM_CLASSES:
                 if self._resolve_symbols_used(
                     self._type_collection.get(param).symbols,
                     predicate=lambda sym: self._contains_symbol_name(subscript, sym),
@@ -65,7 +105,7 @@ class PEP695Formatter(BaseVisitor):
                     return cst.RemoveFromParent()
 
         if name in self._type_collection.get(ProtocolInfo).aliases:
-            for param in _TYPE_PARAM_CLASSES:
+            for param in TYPE_PARAM_CLASSES:
                 if self._resolve_symbols_used(
                     self._type_collection.get(param).symbols,
                     predicate=lambda sym: self._contains_symbol_name(subscript, sym),

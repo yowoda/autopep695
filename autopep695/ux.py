@@ -44,6 +44,7 @@ def init_logging(debug: bool = False, silent: bool = False) -> None:
     if silent is True:
         logging.disable(logging.ERROR)
 
-# Unfortunately the pathlib.Path implementation as the factory is platform-dependent
-def format_special(path: t.Union[Path, str], wrap: str ="'") -> str:
+
+# Unfortunately the pathlib.Path implementation can not be subclassed as the factory is platform-dependent
+def format_special(path: t.Union[Path, str], wrap: str = "'") -> str:
     return f"{wrap}{BOLD}{BLUE}{path}{RESET}{wrap}"

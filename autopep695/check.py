@@ -132,7 +132,7 @@ class CheckPEP695Visitor(BaseVisitor):
         logging.error("%s", report.format())
         logging.warning(
             f"Type assignments using the {format_special('type', '`')} keyword are not equivalent to {format_special('TypeAlias', '`')} "
-            f"at runtime. A rewrite using {format_special('autopep695 format', '`')} can have side-effects.\n"
+            f"at runtime. A rewrite using {format_special('autopep695 format --unsafe', '`')} can have side-effects.\n"
         )
 
     def _report_if_requires_change(

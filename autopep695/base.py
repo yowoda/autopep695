@@ -20,9 +20,22 @@ from autopep695.aliases import AliasCollection, get_qualified_name
 if t.TYPE_CHECKING:
     from pathlib import Path
 
-_SupportsTypeParamaterT = t.TypeVar(
-    "_SupportsTypeParamaterT", cst.FunctionDef, cst.ClassDef, cst.TypeAlias
-)
+
+class TypeParamAware(t.Protocol):
+    """
+    A protocol that represents a node that supports pep695-like type
+    parameters.
+    """
+
+    @property
+    def type_parameters(self) -> t.Optional[cst.TypeParameters]: ...
+
+    def with_changes(
+        self, *args: t.Any, type_parameters: cst.TypeParameters, **kwargs: t.Any
+    ) -> TypeParamAware: ...
+
+
+_SupportsTypeParameterT = t.TypeVar("_SupportsTypeParameterT", bound=TypeParamAware)
 _SymbolT = t.TypeVar("_SymbolT", bound=Symbol)
 _IGNORE_COMMENTS_RULES: t.Final[t.Sequence[str]] = ("pep695-ignore",)
 
@@ -146,7 +159,7 @@ class ProtocolInfo(TypingClassInfo):
     name = "Protocol"
 
 
-_TYPE_PARAM_CLASSES = t.cast(
+TYPE_PARAM_CLASSES = t.cast(
     t.Sequence[type[TypingParameterClassInfo[Symbol]]],
     (TypeVarInfo, ParamSpecInfo, TypeVarTupleInfo),
 )
@@ -187,7 +200,7 @@ class TypeClassCollection:
 class BaseVisitor(m.MatcherDecoratableTransformer):
     def __init__(self, file_path: Path) -> None:
         self._file_path = file_path
-        
+
         self._type_collection = TypeClassCollection()
 
         self._new_typevars_for_node: dict[
@@ -258,7 +271,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         name = get_qualified_name(node.func)
 
-        for typeparam in _TYPE_PARAM_CLASSES:
+        for typeparam in TYPE_PARAM_CLASSES:
             info = self._type_collection.get(typeparam)
             if name in info.aliases:
                 info.symbols.append(info.build_symbol_from_args(node.args))
@@ -331,9 +344,9 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
     def _resolve_assign_type_parameter_used(
         self, node: cst.AnnAssign, symbols: t.Iterable[_SymbolT]
     ) -> list[_SymbolT]:
-        condition: t.Callable[[Symbol], bool] = lambda sym: self._contains_symbol_name(
-            node, sym
-        )
+        def condition(sym: Symbol) -> bool:
+            return self._contains_symbol_name(node, sym)
+
         return self._resolve_symbols_used(symbols, condition)
 
     def _resolve_class_type_parameter_used(
@@ -351,19 +364,15 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
     def _resolve_function_type_parameter_used(
         self, node: cst.FunctionDef, symbols: t.Iterable[_SymbolT]
     ) -> list[_SymbolT]:
-        condition: t.Callable[[Symbol], bool] = lambda sym: (
-            self._contains_symbol_name(node.params, sym)
-            or (
+        def condition(sym: Symbol) -> bool:
+            return self._contains_symbol_name(node.params, sym) or (
                 node.returns is not None
                 and self._contains_symbol_name(node.returns, sym)
             )
-        )
 
         return self._resolve_symbols_used(symbols, condition)
 
-    def _resolve_pep695_type_parameters(
-        self, node: _SupportsTypeParamaterT
-    ) -> list[str]:
+    def _resolve_pep695_type_parameters(self, node: TypeParamAware) -> list[str]:
         if node.type_parameters is None:
             return []
 
@@ -372,15 +381,15 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
     def _set_new_symbols_for(
         self,
-        node: _SupportsTypeParamaterT,
+        node: _SupportsTypeParameterT,
         *,
         condition: t.Callable[[Symbol, list[str]], bool],
-        resolver: t.Callable[[_SupportsTypeParamaterT, list[Symbol]], list[Symbol]],
+        resolver: t.Callable[[_SupportsTypeParameterT, list[Symbol]], list[Symbol]],
     ) -> None:
         _typeparameter_names = self._resolve_pep695_type_parameters(node)
 
         for cls, new_symbols_for_node in zip(
-            _TYPE_PARAM_CLASSES,
+            TYPE_PARAM_CLASSES,
             (
                 self._new_typevars_for_node,
                 self._new_paramspecs_for_node,
@@ -436,12 +445,12 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
     def _add_typeparameters(
         self,
-        original_node: _SupportsTypeParamaterT,
-        updated_node: _SupportsTypeParamaterT,
+        original_node: _SupportsTypeParameterT,
+        updated_node: _SupportsTypeParameterT,
         typevars: list[TypeVarSymbol],
         paramspecs: list[ParamSpecSymbol],
         typevartuples: list[TypeVarTupleSymbol],
-    ) -> _SupportsTypeParamaterT:
+    ) -> _SupportsTypeParameterT:
         if not any((typevars, paramspecs, typevartuples)):
             return updated_node
 

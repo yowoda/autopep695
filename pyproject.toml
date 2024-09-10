@@ -20,7 +20,8 @@ license = { file = "LICENSE" }
 dynamic = ["version"]
 dependencies = [
     "libcst>=1.4.0",
-    "colorama>=0.4.6, <1"
+    "colorama>=0.4.6, <1",
+    "typing-extensions>=4.12.2, <5"
 ]
 
 [project.urls]
