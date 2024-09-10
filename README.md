@@ -46,6 +46,7 @@ is turned into
 import typing as t
 type StrOrInt = str | int
 ```
+This rewrite is considered unsafe which is why you need to pass the `--unsafe` flag to `autopep695 format` for `autopep695` to format `TypeAlias` annotated assignments.
 - Rewrite class definitions that use `TypeVar`s, `ParamSpec`s or `TypeVarTuple`s to conform to PEP 695 syntax e.g.:
 ```py
 import typing as t
