@@ -19,15 +19,6 @@ if t.TYPE_CHECKING:
     from pathlib import Path
 
 
-def _check_valid_paths(paths: t.Iterable[Path]) -> bool:
-    for path in paths:
-        if not path.exists():
-            logging.error(f"The specified path {format_special(path)} does not exist.")
-            return False
-
-    return True
-
-
 def _file_aware_parse_code(code: str, path: Path) -> cst.Module:
     try:
         tree = cst.parse_module(code)
@@ -60,29 +51,6 @@ def _format_file(path: Path, *, unsafe: bool) -> None:
         f.seek(0)
         f.write(code)
         f.truncate()
-
-
-def _format_dir(path: Path, *, unsafe: bool) -> None:
-    logging.debug("Analyzing directory %s", format_special(path))
-    for p in path.iterdir():
-        if p.is_dir():
-            _format_dir(p, unsafe=unsafe)
-
-        if p.is_file() and _has_valid_extension(p):
-            _format_file(p, unsafe=unsafe)
-
-
-def _has_valid_extension(path: Path) -> bool:
-    return path.suffix in (".py", ".pyi")
-
-
-def _get_all_files(paths: t.Iterable[Path]) -> t.Iterable[Path]:
-    for path in paths:
-        if path.is_file() and _has_valid_extension(path):
-            yield path
-
-        else:
-            yield from (p for p in path.rglob("*") if _has_valid_extension(p))
 
 
 def _format_file_wrapper(unsafe: bool, path: Path) -> None:
@@ -121,29 +89,22 @@ def _parallel_format_paths(
     ) as pool:
         logging.debug("Run with --parallel, Starting %s processes...", processes)
         pool.map(
-            functools.partial(_format_file_wrapper, unsafe=unsafe),
-            _get_all_files(paths),
+            functools.partial(_format_file_wrapper, unsafe),
+            paths,
         )
 
 
 def format_paths(
     paths: t.Iterable[Path], *, parallel: t.Union[bool, int], unsafe: bool
 ) -> None:
-    if not _check_valid_paths(paths):
-        return
-
     if parallel is not False:
         _parallel_format_paths(
             paths=paths, processes=None if parallel is True else parallel, unsafe=unsafe
         )
-        return
 
-    for path in paths:
-        if path.is_file() and _has_valid_extension(path):
+    else:
+        for path in paths:
             _format_file(path, unsafe=unsafe)
-
-        elif path.is_dir():
-            _format_dir(path, unsafe=unsafe)
 
 
 def _check_code(code: str, *, file_path: Path, silent: bool) -> int:
@@ -169,29 +130,5 @@ def _check_file(path: Path, *, silent: bool) -> int:
         return 0
 
 
-def _check_dir(path: Path, *, silent: bool) -> int:
-    errors = 0
-    logging.debug("Analyzing directory %s", format_special(path))
-    for p in path.iterdir():
-        if p.is_dir():
-            errors += _check_dir(p, silent=silent)
-
-        if p.is_file() and _has_valid_extension(p):
-            errors += _check_file(p, silent=silent)
-
-    return errors
-
-
-def check_paths(paths: t.Iterable[Path], *, silent: bool) -> t.Optional[int]:
-    errors = 0
-    if not _check_valid_paths(paths):
-        return None
-
-    for path in paths:
-        if path.is_file() and _has_valid_extension(path):
-            errors += _check_file(path, silent=silent)
-
-        elif path.is_dir():
-            errors += _check_dir(path, silent=silent)
-
-    return errors
+def check_paths(paths: t.Iterable[Path], *, silent: bool) -> int:
+    return sum(_check_file(p, silent=silent) for p in paths)

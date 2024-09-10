@@ -1,11 +1,56 @@
 import argparse
+import logging
 import sys
+import typing as t
 from pathlib import Path
 
 from colorama import just_fix_windows_console
 
 from autopep695 import analyzer, __version__
 from autopep695.ux import init_logging, RED, RESET, BOLD, format_special
+from autopep695.errors import InvalidPath
+
+INCLUDE_PATTERNS: t.Final[t.Sequence[str]] = ("*.py", "*.pyi")
+EXCLUDE_PATTERNS: t.Final[t.Sequence[str]] = (
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "dist",
+    "node_modules",
+    "venv",
+    "__pycache__",
+)
+
+
+def filter_paths(
+    paths: t.Iterable[Path], include: t.Iterable[str], exclude: t.Iterable[str]
+) -> t.Iterable[Path]:
+    for path in paths:
+        if not path.exists():
+            raise InvalidPath(str(path))
+
+        if any((path.match(pattern) for pattern in exclude)):
+            continue
+
+        if path.is_file() and any((path.match(pattern) for pattern in include)):
+            yield path
+
+        elif path.is_dir():
+            yield from filter_paths(path.iterdir(), include=include, exclude=exclude)
 
 
 def main() -> None:
@@ -32,6 +77,34 @@ def main() -> None:
         required=False,
         action="store_true",
         help="Whether to silent the error reports.",
+    )
+    check_parser.add_argument(
+        "--exclude",
+        nargs="+",
+        help="Paths or patterns to exclude from being checked",
+        required=False,
+        default=EXCLUDE_PATTERNS,
+    )
+    check_parser.add_argument(
+        "--extend-exclude",
+        nargs="+",
+        help="Paths or patterns to exclude from being checked in addition to patterns excluded by default",
+        required=False,
+        default=(),
+    )
+    check_parser.add_argument(
+        "--include",
+        nargs="+",
+        help="Paths or patterns to include in being checked",
+        required=False,
+        default=INCLUDE_PATTERNS,
+    )
+    check_parser.add_argument(
+        "--extend-include",
+        nargs="+",
+        help="Paths or patterns to include in being checked in addition to patterns included by default",
+        required=False,
+        default=(),
     )
     check_parser.add_argument(
         "-d",
@@ -70,6 +143,34 @@ def main() -> None:
         help="Whether to process the files in parallel. Specify an integer to set the number of processes used.",
     )
     format_parser.add_argument(
+        "--exclude",
+        nargs="+",
+        help="Paths or patterns to exclude from being formatted",
+        required=False,
+        default=EXCLUDE_PATTERNS,
+    )
+    format_parser.add_argument(
+        "--extend-exclude",
+        nargs="+",
+        help="Paths or patterns to exclude from being formatted in addition to patterns excluded by default",
+        required=False,
+        default=(),
+    )
+    format_parser.add_argument(
+        "--include",
+        nargs="+",
+        help="Paths or patterns to include in being formatted",
+        required=False,
+        default=INCLUDE_PATTERNS,
+    )
+    format_parser.add_argument(
+        "--extend-include",
+        nargs="+",
+        help="Paths or patterns to include in being formatted in addition to patterns included by default",
+        required=False,
+        default=(),
+    )
+    format_parser.add_argument(
         "-d",
         "--debug",
         help="Show debug information such as files analyzed",
@@ -87,9 +188,20 @@ def main() -> None:
 
     elif args.subparser == "check":
         init_logging(debug=args.debug, silent=args.silent)
-        errors = analyzer.check_paths(args.paths, silent=args.silent)
-        if errors is None:
-            return
+        paths = filter_paths(
+            args.paths,
+            include=set((*args.include, *args.extend_include)),
+            exclude=set((*args.exclude, *args.extend_exclude)),
+        )
+
+        try:
+            errors = analyzer.check_paths(paths, silent=args.silent)
+
+        except InvalidPath as e:
+            logging.error(
+                f"The specified path {format_special(e.path)} does not exist."
+            )
+            sys.exit(1)
 
         if errors == 0:
             print("All checks passed!")
@@ -104,7 +216,19 @@ def main() -> None:
 
     elif args.subparser == "format":
         init_logging(debug=args.debug)
-        analyzer.format_paths(args.paths, parallel=args.parallel, unsafe=args.unsafe)
+        paths = filter_paths(
+            args.paths,
+            include=set((*args.include, *args.extend_include)),
+            exclude=set((*args.exclude, *args.extend_exclude)),
+        )
+        try:
+            analyzer.format_paths(paths, parallel=args.parallel, unsafe=args.unsafe)
+
+        except InvalidPath as e:
+            logging.error(
+                f"The specified path {format_special(e.path)} does not exist."
+            )
+            sys.exit(1)
 
     elif args.subparser == "info":
         import os

@@ -32,6 +32,15 @@ Rewrite the code to the new type parameter syntax by running the `format` subcom
 
 It is recommended to specify the `--parallel` (`-p`) flag if you're running `format` against a large codebase as the tool is written in pure python and is not optimized for speed. This way, the workload is distributed across multiple subprocesses, each spawning a new python interpreter that formats the assigned files.
 
+## Excluding and including files
+`autopep695` by default ignores the following paths:<br>
+`.bzr`, `.direnv`, `.eggs`, `.git`, `.git-rewrite`, `.hg`, `.mypy_cache`, `.nox`, `.pants.d`, `.pytype`, `.ruff_cache`, `.svn`, `.tox`, `.venv`, `__pypackages__`, `_build`, `buck-out`, `dist`, `node_modules`, `venv`, `__pycache__`'
+
+and includes the following file patterns:
+`*.py`, `*.pyi`
+
+You can change this behaviour by specifying the `--exclude` and `--include` flags which take any number of patterns to match against. Typically you will want to use `--extend-exclude` or `--extend-include` though, especially if you just want to add patterns to exclude or include, for example a file extension **in addition** to `.py` and `.pyi`.
+
 # What `autopep695` does and doesn't do
 
 `autopep695` does:
