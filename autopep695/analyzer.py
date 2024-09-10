@@ -147,7 +147,7 @@ def _check_file(path: Path, *, silent: bool) -> int:
 
     except Exception as e:
         logging.error(
-            f"Internal error while formatting code in {format_special(path)}\n{_show_debug_traceback_note()}"
+            f"Internal error while checking code in {format_special(path)}\n{_show_debug_traceback_note()}"
         )
         logging.debug("Full traceback for the error above:", exc_info=e)
         return 0
