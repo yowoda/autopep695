@@ -176,6 +176,18 @@ def main() -> None:
         default=(),
     )
     format_parser.add_argument(
+        "--remove-variance",
+        help="If given, removes the variance suffixes in the type parameter names",
+        action="store_true",
+        required=False,
+    )
+    format_parser.add_argument(
+        "--remove-private",
+        help="If given, removes the underscore prefixes in the type parameter names",
+        action="store_true",
+        required=False,
+    )
+    format_parser.add_argument(
         "-d",
         "--debug",
         help="Show debug information such as files analyzed",
@@ -227,7 +239,13 @@ def main() -> None:
             exclude=set((*args.exclude, *args.extend_exclude)),
         )
         try:
-            analyzer.format_paths(paths, parallel=args.parallel, unsafe=args.unsafe)
+            analyzer.format_paths(
+                paths,
+                parallel=args.parallel,
+                unsafe=args.unsafe,
+                remove_variance=args.remove_variance,
+                remove_private=args.remove_private,
+            )
 
         except InvalidPath as e:
             logging.error(

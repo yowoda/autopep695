@@ -8,6 +8,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 import inspect
+import logging
 
 import typing as t
 
@@ -21,6 +22,8 @@ from autopep695.symbols import (
     TypeVarTupleSymbol,
 )
 from autopep695.aliases import AliasCollection, get_qualified_name
+from autopep695.ux import format_special
+from autopep695.errors import TypeParamMismatch
 
 if t.TYPE_CHECKING:
     from pathlib import Path
@@ -74,23 +77,44 @@ class TypingClassInfo:
             _typing_class_info_collection.append(cls)
 
 
+def make_clean_name(name: str, variance: bool, private: bool) -> str:
+    if private:
+        name = name.lstrip("_")
+
+    if variance:
+        name = name.removesuffix("_co")
+        name = name.removesuffix("_contra")
+
+    return name
+
+
 @dataclass
 class TypingParameterClassInfo(t.Generic[_SymbolT], TypingClassInfo, abc.ABC):
     symbols: list[_SymbolT] = field(default_factory=list)
 
     @abc.abstractmethod
-    def build(self, symbol: _SymbolT) -> cst.TypeParam:
+    def build(
+        self, symbol: _SymbolT, *, remove_variance: bool, remove_private: bool
+    ) -> cst.TypeParam:
         """Build and return the node from a given symbol"""
 
     @abc.abstractmethod
-    def build_symbol_from_args(self, arguments: t.Sequence[cst.Arg]) -> _SymbolT:
-        """Build a symbol from the given args"""
+    def build_symbol_from_assignment(
+        self, name: str, arguments: t.Sequence[cst.Arg]
+    ) -> _SymbolT:
+        """
+        Build a symbol from the a type parameter assignment, where `name` is variable name
+        and `arguments` the list of arguments that are passed to the type param constructor.
+        Raises TypeParamMismatch if the `name` and the name passed in the list of arguments don't match.
+        """
 
 
 class TypeVarInfo(TypingParameterClassInfo[TypeVarSymbol]):
     name = "TypeVar"
 
-    def build(self, symbol: TypeVarSymbol) -> cst.TypeParam:
+    def build(
+        self, symbol: TypeVarSymbol, *, remove_variance: bool, remove_private: bool
+    ) -> cst.TypeParam:
         bound = symbol.bound
         if bound is None and symbol.constraints:
             elements: list[cst.Element] = []
@@ -99,14 +123,23 @@ class TypeVarInfo(TypingParameterClassInfo[TypeVarSymbol]):
 
             bound = cst.Tuple(elements)
 
+        name = make_clean_name(
+            symbol.name, variance=remove_variance, private=remove_private
+        )
+
         return cst.TypeParam(
-            param=cst.TypeVar(name=cst.Name(value=symbol.name), bound=bound),
+            param=cst.TypeVar(name=cst.Name(value=name), bound=bound),
             default=symbol.default,
         )
 
-    def build_symbol_from_args(self, arguments: t.Sequence[cst.Arg]) -> TypeVarSymbol:
+    def build_symbol_from_assignment(
+        self, name: str, arguments: t.Sequence[cst.Arg]
+    ) -> TypeVarSymbol:
         args, kwargs = _get_args_kwargs(arguments)
-        name = cst.ensure_type(args[0], cst.SimpleString).raw_value
+        arg_name = cst.ensure_type(args[0], cst.SimpleString).raw_value
+        if arg_name != name:
+            raise TypeParamMismatch(arg_name)
+
         constraints: list[cst.BaseExpression] = [] if len(args) == 1 else args[1:]
         return TypeVarSymbol(
             name=name,
@@ -119,16 +152,28 @@ class TypeVarInfo(TypingParameterClassInfo[TypeVarSymbol]):
 class ParamSpecInfo(TypingParameterClassInfo[ParamSpecSymbol]):
     name = "ParamSpec"
 
-    def build(self, symbol: ParamSpecSymbol) -> cst.TypeParam:
+    def build(
+        self, symbol: ParamSpecSymbol, *, remove_variance: bool, remove_private: bool
+    ) -> cst.TypeParam:
+        name = make_clean_name(
+            symbol.name, variance=remove_variance, private=remove_private
+        )
+
         return cst.TypeParam(
-            param=cst.ParamSpec(name=cst.Name(value=symbol.name)),
+            param=cst.ParamSpec(name=cst.Name(value=name)),
             default=symbol.default,
         )
 
-    def build_symbol_from_args(self, arguments: t.Sequence[cst.Arg]) -> ParamSpecSymbol:
+    def build_symbol_from_assignment(
+        self, name: str, arguments: t.Sequence[cst.Arg]
+    ) -> ParamSpecSymbol:
         args, kwargs = _get_args_kwargs(arguments)
+        arg_name = cst.ensure_type(args[0], cst.SimpleString).raw_value
+        if arg_name != name:
+            raise TypeParamMismatch(arg_name)
+
         return ParamSpecSymbol(
-            name=cst.ensure_type(args[0], cst.SimpleString).raw_value,
+            name=name,
             default=kwargs.get("default"),
         )
 
@@ -136,18 +181,28 @@ class ParamSpecInfo(TypingParameterClassInfo[ParamSpecSymbol]):
 class TypeVarTupleInfo(TypingParameterClassInfo[TypeVarTupleSymbol]):
     name = "TypeVarTuple"
 
-    def build(self, symbol: TypeVarTupleSymbol) -> cst.TypeParam:
+    def build(
+        self, symbol: TypeVarTupleSymbol, *, remove_variance: bool, remove_private: bool
+    ) -> cst.TypeParam:
+        name = make_clean_name(
+            symbol.name, variance=remove_variance, private=remove_private
+        )
+
         return cst.TypeParam(
-            param=cst.TypeVarTuple(name=cst.Name(value=symbol.name)),
+            param=cst.TypeVarTuple(name=cst.Name(value=name)),
             default=symbol.default,
         )
 
-    def build_symbol_from_args(
-        self, arguments: t.Sequence[cst.Arg]
+    def build_symbol_from_assignment(
+        self, name: str, arguments: t.Sequence[cst.Arg]
     ) -> TypeVarTupleSymbol:
         args, kwargs = _get_args_kwargs(arguments)
+        arg_name = cst.ensure_type(args[0], cst.SimpleString).raw_value
+        if arg_name != name:
+            raise TypeParamMismatch(arg_name)
+
         return TypeVarTupleSymbol(
-            name=cst.ensure_type(args[0], cst.SimpleString).raw_value,
+            name=name,
             default=kwargs.get("default"),
         )
 
@@ -270,16 +325,34 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             import_info = self._get_import_symbols(node)
             self._type_collection.update_aliases_from_import_info(import_info)
 
-    def _is_typeparam_assign(self, node: cst.Call) -> bool:
-        if not m.matches(node, m.Call(m.Attribute() | m.Name())):
+    def _is_typeparam_assign(self, node: cst.Assign) -> bool:
+        if not m.matches(
+            node,
+            m.Assign(
+                targets=[m.AssignTarget(m.Name())],
+                value=m.Call(m.Attribute() | m.Name()),
+            ),
+        ):
             return False
 
-        name = get_qualified_name(node.func)
+        call = cst.ensure_type(node.value, cst.Call)
+        target = cst.ensure_type(node.targets[0].target, cst.Name)
+
+        var_name = target.value
+        func_name = get_qualified_name(call.func)
 
         for typeparam in TYPE_PARAM_CLASSES:
             info = self._type_collection.get(typeparam)
-            if name in info.aliases:
-                info.symbols.append(info.build_symbol_from_args(node.args))
+            if func_name in info.aliases:
+                try:
+                    symbol = info.build_symbol_from_assignment(var_name, call.args)
+                except TypeParamMismatch as e:
+                    logging.error(
+                        f"Type Error in {format_special(self._file_path)}: Can't assign variable {var_name} to {info.name}({e.arg_name!r})"
+                    )
+                    return False
+
+                info.symbols.append(symbol)
                 return True
 
         return False
@@ -292,8 +365,13 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         return name in self._type_collection.get(TypeAliasInfo).aliases
 
-    def leave_AnnAssign(
-        self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
+    def maybe_build_TypeAlias_node(
+        self,
+        original_node: cst.AnnAssign,
+        updated_node: cst.AnnAssign,
+        *,
+        remove_variance: bool = False,
+        remove_private: bool = False,
     ) -> t.Union[cst.AnnAssign, cst.TypeAlias]:
         if self._should_ignore_statement(original_node):
             return updated_node
@@ -321,8 +399,22 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             _used_typevars,
             _used_paramspecs,
             _used_typevartuples,
+            remove_variance=remove_variance,
+            remove_private=remove_private,
         )
-        return new_node
+        if remove_variance or remove_private:
+            for sym in (*_used_typevars, *_used_paramspecs, *_used_typevartuples):
+                new_node = m.replace(
+                    new_node,
+                    m.Name(sym.name),
+                    cst.Name(
+                        make_clean_name(
+                            sym.name, variance=remove_variance, private=remove_private
+                        )
+                    ),
+                )
+
+        return cst.ensure_type(new_node, cst.TypeAlias)
 
     def _should_ignore_statement(self, node: cst.CSTNode) -> bool:
         parent = self._node_to_parent[node]
@@ -458,6 +550,9 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
         typevars: list[TypeVarSymbol],
         paramspecs: list[ParamSpecSymbol],
         typevartuples: list[TypeVarTupleSymbol],
+        *,
+        remove_variance: bool,
+        remove_private: bool,
     ) -> _SupportsTypeParameterT:
         if not any((typevars, paramspecs, typevartuples)):
             return updated_node
@@ -467,15 +562,31 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             params = list(original_node.type_parameters.params)
 
         for typevar in typevars:
-            params.append(self._type_collection.get(TypeVarInfo).build(typevar))
+            params.append(
+                self._type_collection.get(TypeVarInfo).build(
+                    typevar,
+                    remove_variance=remove_variance,
+                    remove_private=remove_private,
+                )
+            )
 
         for typevartuple in typevartuples:
             params.append(
-                self._type_collection.get(TypeVarTupleInfo).build(typevartuple)
+                self._type_collection.get(TypeVarTupleInfo).build(
+                    typevartuple,
+                    remove_variance=remove_variance,
+                    remove_private=remove_private,
+                )
             )
 
         for paramspec in paramspecs:
-            params.append(self._type_collection.get(ParamSpecInfo).build(paramspec))
+            params.append(
+                self._type_collection.get(ParamSpecInfo).build(
+                    paramspec,
+                    remove_variance=remove_variance,
+                    remove_private=remove_private,
+                )
+            )
 
         return updated_node.with_changes(type_parameters=cst.TypeParameters(params))
 

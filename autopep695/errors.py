@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 class ParsingError(Exception):
     """
     Error to raise if libcst fails to parse the given code
@@ -16,3 +17,12 @@ class InvalidPath(Exception):
 
     def __init__(self, path: str) -> None:
         self.path = path
+
+
+class TypeParamMismatch(Exception):
+    """
+    Error to raise if variable name and type param constructor name don't match.
+    """
+
+    def __init__(self, arg_name: str) -> None:
+        self.arg_name = arg_name

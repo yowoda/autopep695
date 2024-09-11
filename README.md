@@ -32,6 +32,11 @@ Rewrite the code to the new type parameter syntax by running the `format` subcom
 
 It is recommended to specify the `--parallel` (`-p`) flag if you're running `format` against a large codebase as the tool is written in pure python and is not optimized for speed. This way, the workload is distributed across multiple subprocesses, each spawning a new python interpreter that formats the assigned files.
 
+You can also specify the `--remove-variance` flag if you want to remove variance information from the name of the type parameter:
+`T_co` -> `T`, `K_contra` -> `K`.
+
+You can specify the `--remove-private` flag if you want to remove leading underscores that would have marked the type parameter as private: `_T` -> `T`, `__T` -> `T`, ... 
+
 ## Excluding and including files
 `autopep695` by default ignores the following paths:<br>
 `.bzr`, `.direnv`, `.eggs`, `.git`, `.git-rewrite`, `.hg`, `.mypy_cache`, `.nox`, `.pants.d`, `.pytype`, `.ruff_cache`, `.svn`, `.tox`, `.venv`, `__pypackages__`, `_build`, `buck-out`, `dist`, `node_modules`, `venv`, `__pycache__`'
@@ -133,6 +138,7 @@ will remain the exact same
 
 `autopep695` does not:
 - Remove unused imports once type assignments are removed, that's out of scope for this project.
+- Fix imports that try to import a type parameter variable from another module which has been deleted after running `autopep695 format`
 - Does not neccesarily follow the style of your next best linter
 
 It is best to format the code with a tool like [ruff](https://docs.astral.sh/ruff/) after running `autopep695 format`.

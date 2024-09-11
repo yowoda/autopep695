@@ -12,7 +12,14 @@ from typing_extensions import ParamSpec, Concatenate
 import libcst as cst
 from libcst import matchers as m
 
-from autopep695.base import BaseVisitor, GenericInfo, ProtocolInfo, TYPE_PARAM_CLASSES
+from autopep695.base import (
+    BaseVisitor,
+    GenericInfo,
+    ProtocolInfo,
+    TYPE_PARAM_CLASSES,
+    Symbol,
+    make_clean_name,
+)
 from autopep695.aliases import get_qualified_name
 
 if t.TYPE_CHECKING:
@@ -42,8 +49,18 @@ def unsafe(
 
 
 class PEP695Formatter(BaseVisitor):
-    def __init__(self, file_path: Path, *, unsafe: bool) -> None:
+    def __init__(
+        self,
+        file_path: Path,
+        *,
+        unsafe: bool,
+        remove_variance: bool,
+        remove_private: bool,
+    ) -> None:
         self.unsafe = unsafe
+
+        self._remove_variance = remove_variance
+        self._remove_private = remove_private
 
         super().__init__(file_path=file_path)
 
@@ -53,9 +70,7 @@ class PEP695Formatter(BaseVisitor):
         if self._should_ignore_statement(original_node):
             return updated_node
 
-        if isinstance(original_node.value, cst.Call) and self._is_typeparam_assign(
-            original_node.value
-        ):
+        if self._is_typeparam_assign(original_node):
             return cst.RemoveFromParent()
 
         return updated_node
@@ -64,7 +79,12 @@ class PEP695Formatter(BaseVisitor):
     def leave_AnnAssign(
         self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
     ) -> t.Union[cst.AnnAssign, cst.TypeAlias]:
-        return super().leave_AnnAssign(original_node, updated_node)
+        return self.maybe_build_TypeAlias_node(
+            original_node,
+            updated_node,
+            remove_variance=self._remove_variance,
+            remove_private=self._remove_private,
+        )
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -75,6 +95,8 @@ class PEP695Formatter(BaseVisitor):
             self._new_typevars_for_node[original_node],
             self._new_paramspecs_for_node[original_node],
             self._new_typevartuples_for_node[original_node],
+            remove_variance=self._remove_variance,
+            remove_private=self._remove_private,
         )
 
     def leave_ClassDef(
@@ -86,7 +108,29 @@ class PEP695Formatter(BaseVisitor):
             self._new_typevars_for_node[original_node],
             self._new_paramspecs_for_node[original_node],
             self._new_typevartuples_for_node[original_node],
+            remove_variance=self._remove_variance,
+            remove_private=self._remove_private,
         )
+
+    def leave_Name(self, original_node: cst.Name, updated_node: cst.Name) -> cst.Name:
+        if not (self._remove_variance or self._remove_private):
+            return updated_node
+
+        def condition(sym: Symbol) -> bool:
+            return self._contains_symbol_name(original_node, sym)
+
+        for param in TYPE_PARAM_CLASSES:
+            info = self._type_collection.get(param)
+            if self._resolve_symbols_used(info.symbols, predicate=condition):
+                return cst.Name(
+                    make_clean_name(
+                        original_node.value,
+                        variance=self._remove_variance,
+                        private=self._remove_private,
+                    )
+                )
+
+        return updated_node
 
     @m.call_if_inside(
         m.ClassDef(bases=[m.AtLeastN(n=1)])

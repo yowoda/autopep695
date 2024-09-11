@@ -45,19 +45,39 @@ def _file_aware_parse_code(code: str, path: Path) -> cst.Module:
     return tree
 
 
-def format_code(code: str, *, file_path: Path, unsafe: bool) -> str:
+def format_code(
+    code: str,
+    *,
+    file_path: Path,
+    unsafe: bool,
+    remove_variance: bool,
+    remove_private: bool,
+) -> str:
     tree = _file_aware_parse_code(code, file_path)
-    transformer = PEP695Formatter(file_path, unsafe=unsafe)
+    transformer = PEP695Formatter(
+        file_path,
+        unsafe=unsafe,
+        remove_variance=remove_variance,
+        remove_private=remove_private,
+    )
     new_tree = tree.visit(transformer)
 
     return new_tree.code
 
 
-def _format_file(path: Path, *, unsafe: bool) -> None:
+def _format_file(
+    path: Path, *, unsafe: bool, remove_variance: bool, remove_private: bool
+) -> None:
     logging.debug("Analyzing file %s", format_special(path))
     with path.open("r+", encoding="utf-8") as f:
         try:
-            code = format_code(f.read(), file_path=path, unsafe=unsafe)
+            code = format_code(
+                f.read(),
+                file_path=path,
+                unsafe=unsafe,
+                remove_variance=remove_variance,
+                remove_private=remove_private,
+            )
 
         except ParsingError:  # catch the exception so the file can be skipped and the whole process isn't terminated
             return
@@ -74,18 +94,30 @@ def _format_file(path: Path, *, unsafe: bool) -> None:
         f.truncate()
 
 
-def _format_file_wrapper(unsafe: bool, path: Path) -> None:
+def _format_file_wrapper(
+    unsafe: bool, remove_variance: bool, remove_private: bool, path: Path
+) -> None:
     """
     A `_format_file` wrapper that modifes the order of arguments.
     This is neccessary because pool.map can only pass one argument to the mapped function
     which in this case is the path to the file, so other arguments need to be passed
     using functools.partial
     """
-    return _format_file(path, unsafe=unsafe)
+    return _format_file(
+        path,
+        unsafe=unsafe,
+        remove_variance=remove_variance,
+        remove_private=remove_private,
+    )
 
 
 def _parallel_format_paths(
-    paths: t.Iterable[Path], *, processes: t.Optional[int], unsafe: bool
+    paths: t.Iterable[Path],
+    *,
+    processes: t.Optional[int],
+    unsafe: bool,
+    remove_variance: bool,
+    remove_private: bool,
 ) -> None:
     if processes is None:
         processes = os.cpu_count() or 1
@@ -110,22 +142,38 @@ def _parallel_format_paths(
     ) as pool:
         logging.debug("Run with --parallel, Starting %s processes...", processes)
         pool.map(
-            functools.partial(_format_file_wrapper, unsafe),
+            functools.partial(
+                _format_file_wrapper, unsafe, remove_variance, remove_private
+            ),
             paths,
         )
 
 
 def format_paths(
-    paths: t.Iterable[Path], *, parallel: t.Union[bool, int], unsafe: bool
+    paths: t.Iterable[Path],
+    *,
+    parallel: t.Union[bool, int],
+    unsafe: bool,
+    remove_variance: bool,
+    remove_private: bool,
 ) -> None:
     if parallel is not False:
         _parallel_format_paths(
-            paths=paths, processes=None if parallel is True else parallel, unsafe=unsafe
+            paths=paths,
+            processes=None if parallel is True else parallel,
+            unsafe=unsafe,
+            remove_variance=remove_variance,
+            remove_private=remove_private,
         )
 
     else:
         for path in paths:
-            _format_file(path, unsafe=unsafe)
+            _format_file(
+                path,
+                unsafe=unsafe,
+                remove_variance=remove_variance,
+                remove_private=remove_private,
+            )
 
 
 def _check_code(code: str, *, file_path: Path, silent: bool) -> int:

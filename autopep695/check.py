@@ -90,8 +90,7 @@ class CheckPEP695Visitor(BaseVisitor):
         if self._should_ignore_statement(node):
             return
 
-        if isinstance(node.value, cst.Call):
-            self._is_typeparam_assign(node.value)
+        self._is_typeparam_assign(node)
 
     def _gen_diagnostic(
         self, old_node: cst.CSTNode, message: str, new_node: cst.CSTNode
@@ -120,7 +119,7 @@ class CheckPEP695Visitor(BaseVisitor):
         )
 
     def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
-        new_node = super().leave_AnnAssign(node, node)
+        new_node = self.maybe_build_TypeAlias_node(node, node)
         if not isinstance(new_node, cst.TypeAlias):
             return
 
@@ -162,6 +161,8 @@ class CheckPEP695Visitor(BaseVisitor):
                 typevars,
                 paramspecs,
                 typevartuples,
+                remove_variance=False,
+                remove_private=False,
             ),
         )
 
