@@ -58,3 +58,28 @@ jobs:
         run: |
           pip install nox
           nox -s slotscheck
+
+  copyright-check:
+    name: Copyright-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Filter paths
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            added:
+              - added: '**'
+
+      - name: Run copyright check
+        if: steps.filter.outputs.added == 'true'
+        run: python scripts/copyright.py
