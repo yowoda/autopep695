@@ -24,6 +24,7 @@ from autopep695.symbols import (
 from autopep695.aliases import AliasCollection, get_qualified_name
 from autopep695.ux import format_special
 from autopep695.errors import TypeParamMismatch
+from autopep695.helpers import ensure_type
 
 if t.TYPE_CHECKING:
     from pathlib import Path
@@ -417,9 +418,11 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
         return cst.ensure_type(new_node, cst.TypeAlias)
 
     def _should_ignore_statement(self, node: cst.CSTNode) -> bool:
-        parent = self._node_to_parent[node]
-        if not isinstance(parent, (cst.SimpleStatementLine, cst.SimpleStatementSuite)):
-            return False
+        parent = ensure_type(
+            self._node_to_parent[node],
+            cst.SimpleStatementLine,
+            cst.SimpleStatementSuite,
+        )
 
         if (
             comment := parent.trailing_whitespace.comment
