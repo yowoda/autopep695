@@ -9,6 +9,7 @@ import abc
 from dataclasses import dataclass, field
 import inspect
 import logging
+from copy import deepcopy
 
 import typing as t
 
@@ -24,7 +25,7 @@ from autopep695.symbols import (
 from autopep695.aliases import AliasCollection, get_qualified_name
 from autopep695.ux import format_special
 from autopep695.errors import TypeParamMismatch
-from autopep695.helpers import ensure_type
+from autopep695.helpers import ensure_type, make_clean_name
 
 if t.TYPE_CHECKING:
     from pathlib import Path
@@ -78,20 +79,9 @@ class TypingClassInfo:
             _typing_class_info_collection.append(cls)
 
 
-def make_clean_name(name: str, variance: bool, private: bool) -> str:
-    if private:
-        name = name.lstrip("_")
-
-    if variance:
-        name = name.removesuffix("_co")
-        name = name.removesuffix("_contra")
-
-    return name
-
-
 @dataclass
 class TypingParameterClassInfo(t.Generic[_SymbolT], TypingClassInfo, abc.ABC):
-    symbols: list[_SymbolT] = field(default_factory=list)
+    symbols: dict[str, _SymbolT] = field(default_factory=dict)
 
     @abc.abstractmethod
     def build(
@@ -229,10 +219,14 @@ TYPE_PARAM_CLASSES = t.cast(
 class TypeClassCollection:
     __slots__: t.Sequence[str] = ("_data",)
 
-    def __init__(self) -> None:
-        self._data: dict[type[TypingClassInfo], TypingClassInfo] = {
+    def __init__(self, data: t.Optional[dict[type[TypingClassInfo], TypingClassInfo]]=None) -> None:
+        self._data: dict[type[TypingClassInfo], TypingClassInfo] = data or {
             cls: cls() for cls in _typing_class_info_collection
         }
+
+    @property
+    def data(self) -> dict[type[TypingClassInfo], TypingClassInfo]:
+        return self._data
 
     @t.overload
     def get(
@@ -258,31 +252,108 @@ class TypeClassCollection:
             info.aliases.add_if_not_none(import_info.get(cls.name))
 
 
+
+@dataclass
+class TypeParamCollection(t.Generic[_SupportsTypeParameterT], abc.ABC):
+    """
+    A class that manages type parameters for python classes. This class stores info about:
+    - existing PEP695-like type parameters
+    - type parameters used in class bases
+    """
+
+    node: _SupportsTypeParameterT
+    typevars_used: list[TypeVarSymbol] = field(default_factory=list)
+    paramspecs_used: list[ParamSpecSymbol] = field(default_factory=list)
+    typevartuples_used: list[TypeVarTupleSymbol] = field(default_factory=list)
+
+    @property
+    def pep695_typeparameters(self) -> list[str]:
+        if self.node.type_parameters is None:
+            return []
+        
+        params: list[str] = []
+        
+        for param in self.node.type_parameters.params:
+            params.append(param.param.name.value)
+
+        return params
+    
+    def get_pep695_typeparameters(self) -> list[str]:
+        if self.node.type_parameters is None:
+            return []
+
+        names = t.cast(t.Sequence[cst.Name], m.findall(self.node.type_parameters, m.Name()))
+        return [name.value for name in names]
+
+    
+class ClassTypeParamCollection(TypeParamCollection[cst.ClassDef]):
+    """
+    Stores type parameters used in a python class
+    """
+
+class FunctionTypeParamCollection(TypeParamCollection[cst.FunctionDef]):
+    """
+    Stores type parameters used in a python function
+    """
+
+class ScopeContainer:
+    """
+    A container that stores one of the following scopes:
+    - module-level:     cst.Module, any type parameter assignments that happened at module level which is the most common
+
+    - class-level:      cst.ClassDef, any type parameter assignments that happened within
+                        a class and are only available to nested classes and methods
+
+    - function-level:   cst.FunctionDef, any type parameter assignments that happened within 
+                        a function and are only available to nested classes and methods
+    """
+    def __init__(
+        self, 
+        node: t.Union[ClassTypeParamCollection, FunctionTypeParamCollection, cst.Module],
+        type_collection: t.Optional[TypeClassCollection]=None
+    ) -> None:
+        self._node = node
+
+        data = None if not type_collection else deepcopy(type_collection.data)
+        self._type_collection = TypeClassCollection(data=data)
+
+    @property
+    def node(self) -> t.Union[ClassTypeParamCollection, FunctionTypeParamCollection, cst.Module]:
+        return self._node
+    
+    @property
+    def type_collection(self) -> TypeClassCollection:
+        return self._type_collection
+
+
 class BaseVisitor(m.MatcherDecoratableTransformer):
     def __init__(self, file_path: Path) -> None:
         self._file_path = file_path
 
-        self._type_collection = TypeClassCollection()
-
-        self._new_typevars_for_node: dict[
-            t.Union[cst.FunctionDef, cst.ClassDef], list[TypeVarSymbol]
-        ] = {}
-        self._new_paramspecs_for_node: dict[
-            t.Union[cst.FunctionDef, cst.ClassDef], list[ParamSpecSymbol]
-        ] = {}
-        self._new_typevartuples_for_node: dict[
-            t.Union[cst.FunctionDef, cst.ClassDef], list[TypeVarTupleSymbol]
-        ] = {}
-
         self._node_to_parent: dict[cst.CSTNode, cst.CSTNode] = {}
+        self._scope_stack: list[ScopeContainer] = []
+        # A stack to store the class or function we are currently in
+        # When visiting a class or function, the respective node will be pushed to the stack
+        # When leaving a class or a function, we will pop from the stack
 
         super().__init__()
+
+    @property
+    def current_typecollection(self) -> TypeClassCollection:
+        return self._scope_stack[-1].type_collection
 
     def on_visit(self, node: cst.CSTNode) -> bool:
         for child in node.children:
             self._node_to_parent[child] = node
 
         return super().on_visit(node)
+    
+    def visit_Module(self, node: cst.Module) -> None:
+        self._scope_stack.append(ScopeContainer(node))
+    
+    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+        self._scope_stack.pop()
+        return updated_node
 
     def _get_import_symbols(
         self, node: t.Union[cst.Import, cst.ImportFrom]
@@ -310,7 +381,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             namespaces.append(typing_extensions_import)
 
         for namespace in namespaces:
-            self._type_collection.update_aliases(namespace)
+            self.current_typecollection.update_aliases(namespace)
 
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         if node.module is None:
@@ -320,11 +391,11 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             return
 
         if isinstance(node.names, cst.ImportStar):
-            self._type_collection.update_aliases()
+            self.current_typecollection.update_aliases()
 
         else:
             import_info = self._get_import_symbols(node)
-            self._type_collection.update_aliases_from_import_info(import_info)
+            self.current_typecollection.update_aliases_from_import_info(import_info)
 
     def _is_typeparam_assign(self, node: cst.Assign) -> bool:
         if not m.matches(
@@ -343,7 +414,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
         func_name = get_qualified_name(call.func)
 
         for typeparam in TYPE_PARAM_CLASSES:
-            info = self._type_collection.get(typeparam)
+            info = self.current_typecollection.get(typeparam)
             if func_name in info.aliases:
                 try:
                     symbol = info.build_symbol_from_assignment(var_name, call.args)
@@ -353,10 +424,16 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
                     )
                     return False
 
-                info.symbols.append(symbol)
+                info.symbols[symbol.name] = symbol
                 return True
 
         return False
+    
+    def visit_Assign(self, node: cst.Assign) -> None:
+        if self._should_ignore_statement(node):
+            return
+
+        self._is_typeparam_assign(node)
 
     def _assign_is_typealias(self, node: cst.AnnAssign) -> bool:
         if not m.matches(node.annotation, m.Annotation(m.Attribute() | m.Name())):
@@ -364,7 +441,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         name = get_qualified_name(node.annotation.annotation)
 
-        return name in self._type_collection.get(TypeAliasInfo).aliases
+        return name in self.current_typecollection.get(TypeAliasInfo).aliases
 
     def maybe_build_TypeAlias_node(
         self,
@@ -381,13 +458,13 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             return updated_node
 
         _used_typevars = self._resolve_assign_type_parameter_used(
-            original_node, self._type_collection.get(TypeVarInfo).symbols
+            original_node, self.current_typecollection.get(TypeVarInfo).symbols.values()
         )
         _used_paramspecs = self._resolve_assign_type_parameter_used(
-            original_node, self._type_collection.get(ParamSpecInfo).symbols
+            original_node, self.current_typecollection.get(ParamSpecInfo).symbols.values()
         )
         _used_typevartuples = self._resolve_assign_type_parameter_used(
-            original_node, self._type_collection.get(TypeVarTupleInfo).symbols
+            original_node, self.current_typecollection.get(TypeVarTupleInfo).symbols.values()
         )
 
         _TypeAliasNode = cst.TypeAlias(
@@ -474,77 +551,85 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             )
 
         return self._resolve_symbols_used(symbols, condition)
-
-    def _resolve_pep695_type_parameters(self, node: TypeParamAware) -> list[str]:
-        if node.type_parameters is None:
-            return []
-
-        names = t.cast(t.Sequence[cst.Name], m.findall(node.type_parameters, m.Name()))
-        return [name.value for name in names]
-
-    def _set_new_symbols_for(
-        self,
-        node: _SupportsTypeParameterT,
+    
+    def update_param_collection(
+        self, 
+        collection: TypeParamCollection[_SupportsTypeParameterT],
         *,
-        condition: t.Callable[[Symbol, list[str]], bool],
-        resolver: t.Callable[[_SupportsTypeParameterT, list[Symbol]], list[Symbol]],
+        condition: t.Callable[[Symbol], bool],
+        resolver: t.Callable[[_SupportsTypeParameterT, list[Symbol]], list[Symbol]]
     ) -> None:
-        _typeparameter_names = self._resolve_pep695_type_parameters(node)
-
-        for cls, new_symbols_for_node in zip(
-            TYPE_PARAM_CLASSES,
-            (
-                self._new_typevars_for_node,
-                self._new_paramspecs_for_node,
-                self._new_typevartuples_for_node,
-            ),
+        for param, param_collection in zip(
+            TYPE_PARAM_CLASSES, 
+            (collection.typevars_used, collection.paramspecs_used, collection.typevartuples_used)
         ):
-            info = self._type_collection.get(cls)
-            _new_symbols = resolver(node, info.symbols)
-            new_symbols_for_node[node] = [  # type: ignore
-                symbol
-                for symbol in _new_symbols
-                if condition(symbol, _typeparameter_names)
-            ]
+            param_collection = t.cast(list[Symbol], param_collection)
+            symbols = resolver(
+                collection.node, list(self.current_typecollection.get(param).symbols.values())
+            )
+            new_symbols = [sym for sym in symbols if condition(sym)]
+            param_collection.extend(new_symbols)
+
 
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        self._set_new_symbols_for(
-            node,
-            condition=lambda sym, type_params: sym.name not in type_params,
-            resolver=self._resolve_class_type_parameter_used,
+        self._scope_stack.append(
+            ScopeContainer(ClassTypeParamCollection(node), type_collection=self.current_typecollection)
         )
 
+        collection = ensure_type(self._scope_stack[-1].node, ClassTypeParamCollection)
+        self.update_param_collection(
+            collection,
+            condition=lambda sym: sym.name not in collection.pep695_typeparameters,
+            resolver=self._resolve_class_type_parameter_used
+        )
+
+    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
+        node = ensure_type(self._scope_stack[-1].node, ClassTypeParamCollection)
+        print(f"New typevars for class {original_node.name.value}: ", node.typevars_used)
+        self._scope_stack.pop()
+        return updated_node
+
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
-        parent = self._node_to_parent[node]
+        self._scope_stack.append(
+            ScopeContainer(FunctionTypeParamCollection(node), type_collection=self.current_typecollection)
+        )
+        collection = ensure_type(self._scope_stack[-1].node, FunctionTypeParamCollection)
         _inherited_symbols: dict[type[Symbol], list[Symbol]] = {
             TypeVarSymbol: [],
             ParamSpecSymbol: [],
             TypeVarTupleSymbol: [],
         }
+        _inherited_pep695_names: list[str] = [*collection.pep695_typeparameters]
+        
+        for container in reversed(self._scope_stack):
+            if isinstance(container.node, cst.Module):
+                break
 
-        while isinstance(parent, cst.Module) is False:
-            if isinstance(parent, (cst.ClassDef, cst.FunctionDef)):
-                _inherited_symbols[TypeVarSymbol].extend(
-                    self._new_typevars_for_node[parent]
-                )
-                _inherited_symbols[ParamSpecSymbol].extend(
-                    self._new_paramspecs_for_node[parent]
-                )
-                _inherited_symbols[TypeVarTupleSymbol].extend(
-                    self._new_typevartuples_for_node[parent]
-                )
+            _inherited_pep695_names.extend(container.node.pep695_typeparameters)
 
-                if isinstance(parent, cst.ClassDef):
-                    break  # Stop here because generic classes can't re-use TypeVars that were already declared in outer scope
+            _inherited_symbols[TypeVarSymbol].extend(container.node.typevars_used)
+            _inherited_symbols[ParamSpecSymbol].extend(container.node.paramspecs_used)
+            _inherited_symbols[TypeVarTupleSymbol].extend(container.node.typevartuples_used)
 
-            parent = self._node_to_parent[parent]
+            if isinstance(container.node, ClassTypeParamCollection):
+                break # Classes can't re-use type parameters
 
-        self._set_new_symbols_for(
-            node,
-            condition=lambda sym, type_params: sym not in _inherited_symbols[type(sym)]
-            and sym.name not in type_params,
-            resolver=self._resolve_function_type_parameter_used,
+        self.update_param_collection(
+            collection,
+            condition=lambda sym: (
+                sym.name not in _inherited_pep695_names
+                and sym not in _inherited_symbols[type(sym)]
+            ),
+            resolver=self._resolve_function_type_parameter_used
         )
+        
+
+    def leave_FunctionDef(self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef) -> cst.FunctionDef:
+        node = ensure_type(self._scope_stack[-1].node, FunctionTypeParamCollection)
+        print(f"New typevars for function {original_node.name.value}: ", node.typevars_used)
+        self._scope_stack.pop()
+        return updated_node
+    
 
     def _add_typeparameters(
         self,
@@ -566,7 +651,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         for typevar in typevars:
             params.append(
-                self._type_collection.get(TypeVarInfo).build(
+                self.current_typecollection.get(TypeVarInfo).build(
                     typevar,
                     remove_variance=remove_variance,
                     remove_private=remove_private,
@@ -575,7 +660,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         for typevartuple in typevartuples:
             params.append(
-                self._type_collection.get(TypeVarTupleInfo).build(
+                self.current_typecollection.get(TypeVarTupleInfo).build(
                     typevartuple,
                     remove_variance=remove_variance,
                     remove_private=remove_private,
@@ -584,7 +669,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         for paramspec in paramspecs:
             params.append(
-                self._type_collection.get(ParamSpecInfo).build(
+                self.current_typecollection.get(ParamSpecInfo).build(
                     paramspec,
                     remove_variance=remove_variance,
                     remove_private=remove_private,

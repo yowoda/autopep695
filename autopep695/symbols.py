@@ -18,11 +18,17 @@ __all__: t.Sequence[str] = (
 )
 
 
+@t.runtime_checkable
 class Symbol(t.Protocol):
     name: str
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Symbol):
+            return False
+        
+        return self.name == other.name
 
-@dataclass(frozen=True, repr=False)
+@dataclass(frozen=True, repr=False, eq=False)
 class TypeVarSymbol(Symbol):
     name: str
     constraints: list[cst.BaseExpression]
@@ -37,20 +43,23 @@ class TypeVarSymbol(Symbol):
             constraints_repr.append(repr_string)
 
         bound_repr = "None"
+        default_repr = "None"
 
         if self.bound is not None:
             bound_repr = empty_module.code_for_node(self.bound)
 
-        return f"TypeVar(name={self.name!r}, constraints=({', '.join(constraints_repr)}), bound={bound_repr})"
+        if self.default is not None:
+            default_repr = empty_module.code_for_node(self.default)
+
+        return f"TypeVar(name={self.name!r}, constraints=({', '.join(constraints_repr)}), bound={bound_repr}, default={default_repr})"
 
 
-@dataclass(frozen=True, repr=False)
+@dataclass(frozen=True, repr=False, eq=False)
 class TypeVarTupleSymbol(Symbol):
     name: str
     default: t.Optional[cst.BaseExpression]
 
-
-@dataclass(frozen=True, repr=False)
+@dataclass(frozen=True, repr=False, eq=False)
 class ParamSpecSymbol(Symbol):
     name: str
     default: t.Optional[cst.BaseExpression]
