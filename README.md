@@ -32,10 +32,11 @@ Rewrite the code to the new type parameter syntax by running the `format` subcom
 
 It is recommended to specify the `--parallel` (`-p`) flag if you're running `format` against a large codebase as the tool is written in pure python and is not optimized for speed. This way, the workload is distributed across multiple subprocesses, each spawning a new python interpreter that formats the assigned files.
 
-You can also specify the `--remove-variance` flag if you want to remove variance information from the name of the type parameter:
+The following flags can be specified for additional features:
+- `--remove-variance`: Remove variance information from the name of the type parameter:
 `T_co` -> `T`, `K_contra` -> `K`.
-
-You can specify the `--remove-private` flag if you want to remove leading underscores that would have marked the type parameter as private: `_T` -> `T`, `__T` -> `T`, ... 
+- `--remove-private`: Remove leading underscores that would have marked the type parameter as private: `_T` -> `T`, `__T` -> `T`, ... 
+- `--keep-assignments`: Don't remove unused type parameter assignments 
 
 ## Excluding and including files
 `autopep695` by default ignores the following paths:<br>
@@ -126,19 +127,49 @@ class Undefined: ...
 
 type UndefinedOr[T: (str, int) = int] = Undefined | T
 ```
-- allow you to ignore specific type assignments, simply add a `# pep695-ignore` comment to the line e.g.:
+- allow you to ignore any type parameter related statement, simply add a `# pep695-ignore` comment to the line e.g.:
+```py
+import typing as t
+
+T = t.TypeVar("T")
+
+class A(t.Generic[T]): ... # pep695-ignore
+```
+will remain the exact same.
+
 ```py
 import typing as t
 
 T = t.TypeVar("T") # pep695-ignore
-
-class A(t.Generic[T]): ...
+StrOr: t.TypeAlias = str | T
 ```
-will remain the exact same
+will compile to:
+```py
+import typing as t
+
+T = t.TypeVar("T") # pep695-ignore
+type StrOr = str | T
+```
+- account for codebases that mix old and new type parameter syntax, for those that found this tool in the midst of migrating
+```py
+import typing as t
+
+V = t.TypeVar("V")
+
+class Hello[K](t.MutableMapping[K, V]):
+    ...
+```
+is translated to:
+```py
+import typing as t
+
+class Hello[K, V](t.MutableMapping[K, V]):
+    ...
+```
 
 `autopep695` does not:
 - Remove unused imports once type assignments are removed, that's out of scope for this project.
 - Fix imports that try to import a type parameter variable from another module which has been deleted after running `autopep695 format`
 - Does not neccesarily follow the style of your next best linter
 
-It is best to format the code with a tool like [ruff](https://docs.astral.sh/ruff/) after running `autopep695 format`.
+It is best to format the code with a tool like [`ruff`](https://docs.astral.sh/ruff/) after running `autopep695 format`.
