@@ -6,6 +6,8 @@
 import typing as t
 from typing_extensions import Unpack
 
+import libcst as cst
+
 T = t.TypeVar("T")
 
 __all__: t.Sequence[str] = ("ensure_type", "make_clean_name")
@@ -31,3 +33,17 @@ def make_clean_name(name: str, variance: bool, private: bool) -> str:
         name = name.removesuffix("_contra")
 
     return name
+
+def get_code(*nodes: cst.CSTNode) -> str:
+    reprs: list[str] = []
+    module = cst.Module(body=())
+
+    for node in nodes:
+        reprs.append(module.code_for_node(node))
+
+    return ", ".join(reprs)
+
+def make_empty_IndentedBlock() -> cst.IndentedBlock:
+    return cst.IndentedBlock(
+        body=[cst.SimpleStatementLine([cst.Expr(cst.Ellipsis())])]
+    )

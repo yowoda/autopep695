@@ -19,6 +19,7 @@ from autopep695.check import CheckPEP695Visitor
 from autopep695.format import PEP695Formatter
 from autopep695.ux import init_logging, format_special
 from autopep695.errors import ParsingError
+from autopep695.base import RemoveAssignments
 
 if t.TYPE_CHECKING:
     from pathlib import Path
@@ -61,6 +62,7 @@ def format_code(
         remove_private=remove_private,
     )
     new_tree = tree.visit(transformer)
+    new_tree = new_tree.visit(RemoveAssignments(set(transformer.unused_assignments.values())))
 
     return new_tree.code
 

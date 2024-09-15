@@ -14,7 +14,8 @@ from libcst import matchers as m
 from libcst.metadata import PositionProvider, CodeRange
 
 from autopep695.ux import BOLD, RESET, YELLOW, RED, GREEN, format_special
-from autopep695.base import BaseVisitor, RemoveGenericBaseMixin
+from autopep695.base import BaseVisitor, FunctionTypeParamCollection, ClassTypeParamCollection, ClassBaseArgTransformer
+from autopep695.helpers import ensure_type, make_empty_IndentedBlock
 
 if t.TYPE_CHECKING:
     from pathlib import Path
@@ -53,24 +54,15 @@ class FixFormattingTransformer(m.MatcherDecoratableTransformer):
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
     ) -> cst.ClassDef:
-        return updated_node.with_changes(
-            body=cst.IndentedBlock(
-                body=[cst.SimpleStatementLine([cst.Expr(cst.Ellipsis())])]
-            )
-        )
+        return updated_node.with_changes(body=make_empty_IndentedBlock())
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
-        return updated_node.with_changes(
-            body=cst.IndentedBlock(
-                body=[cst.SimpleStatementLine([cst.Expr(cst.Ellipsis())])]
-            )
-        )
-
+        return updated_node.with_changes(body=make_empty_IndentedBlock())
 
 class FixClassDefFormattingTransformer(
-    FixFormattingTransformer, RemoveGenericBaseMixin
+    FixFormattingTransformer, ClassBaseArgTransformer
 ): ...
 
 
@@ -86,12 +78,6 @@ class CheckPEP695Visitor(BaseVisitor):
     def errors(self) -> int:
         return self._errors
 
-    def visit_Assign(self, node: cst.Assign) -> None:
-        if self._should_ignore_statement(node):
-            return
-
-        self._is_typeparam_assign(node)
-
     def _gen_diagnostic(
         self, old_node: cst.CSTNode, message: str, new_node: cst.CSTNode
     ) -> t.Optional[Diagnostic]:
@@ -103,10 +89,10 @@ class CheckPEP695Visitor(BaseVisitor):
         assert isinstance(metadata, CodeRange)
         pos = metadata.start
         old_node = cst.ensure_type(
-            old_node.visit(FixFormattingTransformer(self._type_collection)), cst.CSTNode
+            old_node.visit(FixFormattingTransformer(self.current_typecollection)), cst.CSTNode
         )
         new_node = cst.ensure_type(
-            new_node.visit(FixClassDefFormattingTransformer(self._type_collection)),
+            new_node.visit(FixClassDefFormattingTransformer(self.current_typecollection)),
             cst.CSTNode,
         )
         return Diagnostic(
@@ -119,7 +105,9 @@ class CheckPEP695Visitor(BaseVisitor):
         )
 
     def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
-        new_node = self.maybe_build_TypeAlias_node(node, node)
+        new_node = self.process_TypeAlias_node(
+            node, node, ignore=self.should_ignore_assign(node)
+        )
         if not isinstance(new_node, cst.TypeAlias):
             return
 
@@ -142,9 +130,10 @@ class CheckPEP695Visitor(BaseVisitor):
     def _report_if_requires_change(
         self, node: t.Union[cst.FunctionDef, cst.ClassDef], message: str
     ) -> None:
-        typevars = self._new_typevars_for_node[node]
-        paramspecs = self._new_paramspecs_for_node[node]
-        typevartuples = self._new_typevartuples_for_node[node]
+        collection = ensure_type(self.current_node, FunctionTypeParamCollection, ClassTypeParamCollection)
+        typevars = collection.typevars_used
+        paramspecs = collection.paramspecs_used
+        typevartuples = collection.typevartuples_used
 
         if not any((typevars, paramspecs, typevartuples)):
             return
@@ -155,7 +144,7 @@ class CheckPEP695Visitor(BaseVisitor):
 
         new_node = t.cast(
             cst.CSTNode,
-            self._add_typeparameters(
+            self.add_typeparameters(
                 node,
                 node,
                 typevars,

@@ -6,9 +6,12 @@
 from __future__ import annotations
 
 import typing as t
+from typing_extensions import Self
 from dataclasses import dataclass
 
 import libcst as cst
+
+from autopep695.helpers import get_code
 
 __all__: t.Sequence[str] = (
     "Symbol",
@@ -27,6 +30,19 @@ class Symbol(t.Protocol):
             return False
         
         return self.name == other.name
+    
+    def __deepcopy__(self, memo: object) -> Self:
+        """
+        Return self as the instance is practically immutable
+        """
+        return self
+    
+    def __hash__(self) -> int:
+        """
+        The data for a symbol is practically immutable which is why
+        it should be fine to implement an "unsafe" hash
+        """
+        return id(self)
 
 @dataclass(frozen=True, repr=False, eq=False)
 class TypeVarSymbol(Symbol):
@@ -36,22 +52,10 @@ class TypeVarSymbol(Symbol):
     default: t.Optional[cst.BaseExpression]
 
     def __repr__(self) -> str:
-        empty_module = cst.Module(body=())
-        constraints_repr: list[str] = []
-        for constraint in self.constraints:
-            repr_string = empty_module.code_for_node(constraint)
-            constraints_repr.append(repr_string)
+        bound_repr = get_code(self.bound) if self.bound else "None"
+        default_repr = get_code(self.default) if self.default else "None"
 
-        bound_repr = "None"
-        default_repr = "None"
-
-        if self.bound is not None:
-            bound_repr = empty_module.code_for_node(self.bound)
-
-        if self.default is not None:
-            default_repr = empty_module.code_for_node(self.default)
-
-        return f"TypeVar(name={self.name!r}, constraints=({', '.join(constraints_repr)}), bound={bound_repr}, default={default_repr})"
+        return f"TypeVar(name={self.name!r}, constraints=({get_code(*self.constraints)}), bound={bound_repr}, default={default_repr})"
 
 
 @dataclass(frozen=True, repr=False, eq=False)
@@ -59,7 +63,17 @@ class TypeVarTupleSymbol(Symbol):
     name: str
     default: t.Optional[cst.BaseExpression]
 
+    def __repr__(self) -> str:
+        default_repr = get_code(self.default) if self.default else "None"
+
+        return f"TypeVarTuple(name={self.name!r}, default={default_repr})"
+
 @dataclass(frozen=True, repr=False, eq=False)
 class ParamSpecSymbol(Symbol):
     name: str
     default: t.Optional[cst.BaseExpression]
+
+    def __repr__(self) -> str:
+        default_repr = get_code(self.default) if self.default else "None"
+
+        return f"ParamSpec(name={self.name!r}, default={default_repr})"
