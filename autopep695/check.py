@@ -14,7 +14,12 @@ from libcst import matchers as m
 from libcst.metadata import PositionProvider, CodeRange
 
 from autopep695.ux import BOLD, RESET, YELLOW, RED, GREEN, format_special
-from autopep695.base import BaseVisitor, FunctionTypeParamCollection, ClassTypeParamCollection, ClassBaseArgTransformer
+from autopep695.base import (
+    BaseVisitor,
+    FunctionTypeParamCollection,
+    ClassTypeParamCollection,
+    ClassBaseArgTransformer,
+)
 from autopep695.helpers import ensure_type, make_empty_IndentedBlock
 
 if t.TYPE_CHECKING:
@@ -61,6 +66,7 @@ class FixFormattingTransformer(m.MatcherDecoratableTransformer):
     ) -> cst.FunctionDef:
         return updated_node.with_changes(body=make_empty_IndentedBlock())
 
+
 class FixClassDefFormattingTransformer(
     FixFormattingTransformer, ClassBaseArgTransformer
 ): ...
@@ -89,10 +95,13 @@ class CheckPEP695Visitor(BaseVisitor):
         assert isinstance(metadata, CodeRange)
         pos = metadata.start
         old_node = cst.ensure_type(
-            old_node.visit(FixFormattingTransformer(self.current_typecollection)), cst.CSTNode
+            old_node.visit(FixFormattingTransformer(self.current_typecollection)),
+            cst.CSTNode,
         )
         new_node = cst.ensure_type(
-            new_node.visit(FixClassDefFormattingTransformer(self.current_typecollection)),
+            new_node.visit(
+                FixClassDefFormattingTransformer(self.current_typecollection)
+            ),
             cst.CSTNode,
         )
         return Diagnostic(
@@ -130,7 +139,9 @@ class CheckPEP695Visitor(BaseVisitor):
     def _report_if_requires_change(
         self, node: t.Union[cst.FunctionDef, cst.ClassDef], message: str
     ) -> None:
-        collection = ensure_type(self.current_node, FunctionTypeParamCollection, ClassTypeParamCollection)
+        collection = ensure_type(
+            self.current_node, FunctionTypeParamCollection, ClassTypeParamCollection
+        )
         typevars = collection.typevars_used
         paramspecs = collection.paramspecs_used
         typevartuples = collection.typevartuples_used

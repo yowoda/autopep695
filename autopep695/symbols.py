@@ -28,21 +28,22 @@ class Symbol(t.Protocol):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Symbol):
             return False
-        
+
         return self.name == other.name
-    
+
     def __deepcopy__(self, memo: object) -> Self:
         """
         Return self as the instance is practically immutable
         """
         return self
-    
+
     def __hash__(self) -> int:
         """
         The data for a symbol is practically immutable which is why
         it should be fine to implement an "unsafe" hash
         """
         return id(self)
+
 
 @dataclass(frozen=True, repr=False, eq=False)
 class TypeVarSymbol(Symbol):
@@ -67,6 +68,7 @@ class TypeVarTupleSymbol(Symbol):
         default_repr = get_code(self.default) if self.default else "None"
 
         return f"TypeVarTuple(name={self.name!r}, default={default_repr})"
+
 
 @dataclass(frozen=True, repr=False, eq=False)
 class ParamSpecSymbol(Symbol):

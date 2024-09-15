@@ -24,6 +24,7 @@ def ensure_type(obj: object, *types: Unpack[tuple[type[T], ...]]) -> T:
 
     return obj
 
+
 def make_clean_name(name: str, variance: bool, private: bool) -> str:
     if private:
         name = name.lstrip("_")
@@ -34,6 +35,7 @@ def make_clean_name(name: str, variance: bool, private: bool) -> str:
 
     return name
 
+
 def get_code(*nodes: cst.CSTNode) -> str:
     reprs: list[str] = []
     module = cst.Module(body=())
@@ -43,7 +45,6 @@ def get_code(*nodes: cst.CSTNode) -> str:
 
     return ", ".join(reprs)
 
+
 def make_empty_IndentedBlock() -> cst.IndentedBlock:
-    return cst.IndentedBlock(
-        body=[cst.SimpleStatementLine([cst.Expr(cst.Ellipsis())])]
-    )
+    return cst.IndentedBlock(body=[cst.SimpleStatementLine([cst.Expr(cst.Ellipsis())])])

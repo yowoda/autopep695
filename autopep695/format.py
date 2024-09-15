@@ -14,7 +14,7 @@ from autopep695.base import (
     ClassTypeParamCollection,
     FunctionTypeParamCollection,
     ClassBaseArgTransformer,
-    CleanNameTransformer
+    CleanNameTransformer,
 )
 from autopep695.helpers import ensure_type
 
@@ -46,7 +46,7 @@ class PEP695Formatter(BaseVisitor):
             updated_node,
             remove_variance=self._remove_variance,
             remove_private=self._remove_private,
-            ignore=(not self._unsafe or self.should_ignore_assign(original_node))
+            ignore=(not self._unsafe or self.should_ignore_assign(original_node)),
         )
 
     def leave_FunctionDef(
@@ -54,13 +54,16 @@ class PEP695Formatter(BaseVisitor):
     ) -> cst.FunctionDef:
         node = ensure_type(self.current_node, FunctionTypeParamCollection)
         type_collection = self.current_typecollection
-        
+
         super().leave_FunctionDef(original_node, updated_node)
 
         if not any((node.typevars_used, node.paramspecs_used, node.typevartuples_used)):
             return updated_node
-        
-        updated_node = ensure_type(updated_node.visit(CleanNameTransformer(type_collection, True, True)), cst.FunctionDef)
+
+        updated_node = ensure_type(
+            updated_node.visit(CleanNameTransformer(type_collection, True, True)),
+            cst.FunctionDef,
+        )
         return self.add_typeparameters(
             updated_node,
             updated_node,
@@ -68,7 +71,7 @@ class PEP695Formatter(BaseVisitor):
             node.paramspecs_used,
             node.typevartuples_used,
             remove_variance=self._remove_variance,
-            remove_private=self._remove_private
+            remove_private=self._remove_private,
         )
 
     def leave_ClassDef(
@@ -81,7 +84,7 @@ class PEP695Formatter(BaseVisitor):
 
         if not any((node.typevars_used, node.paramspecs_used, node.typevartuples_used)):
             return updated_node
-        
+
         bases: list[t.Union[cst.Arg, cst.FlattenSentinel[cst.Arg]]] = []
         for base in original_node.bases:
             new_base = base.visit(ClassBaseArgTransformer(type_collection))
@@ -89,7 +92,14 @@ class PEP695Formatter(BaseVisitor):
                 bases.append(new_base)
 
         updated_node = updated_node.with_changes(bases=bases)
-        updated_node = ensure_type(updated_node.visit(CleanNameTransformer(type_collection, self._remove_variance, self._remove_private)), cst.ClassDef)
+        updated_node = ensure_type(
+            updated_node.visit(
+                CleanNameTransformer(
+                    type_collection, self._remove_variance, self._remove_private
+                )
+            ),
+            cst.ClassDef,
+        )
         return self.add_typeparameters(
             updated_node,
             updated_node,
@@ -97,5 +107,5 @@ class PEP695Formatter(BaseVisitor):
             node.paramspecs_used,
             node.typevartuples_used,
             remove_variance=self._remove_variance,
-            remove_private=self._remove_private
+            remove_private=self._remove_private,
         )
