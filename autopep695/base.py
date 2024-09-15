@@ -561,7 +561,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             remove_private=remove_private,
         )
         if remove_variance or remove_private:
-            new_node.with_changes(
+            new_node = new_node.with_changes(
                 value=new_node.value.visit(
                     CleanNameTransformer(
                         self.current_typecollection, remove_variance, remove_private
