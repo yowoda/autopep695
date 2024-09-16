@@ -188,6 +188,12 @@ def main() -> None:
         required=False,
     )
     format_parser.add_argument(
+        "--keep-assignments",
+        help="Whether to keep unused type parameter assignments",
+        action="store_true",
+        required=False,
+    )
+    format_parser.add_argument(
         "-d",
         "--debug",
         help="Show debug information such as files analyzed",
@@ -245,6 +251,7 @@ def main() -> None:
                 unsafe=args.unsafe,
                 remove_variance=args.remove_variance,
                 remove_private=args.remove_private,
+                keep_assignments=args.keep_assignments,
             )
 
         except InvalidPath as e:

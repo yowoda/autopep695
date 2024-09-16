@@ -19,6 +19,7 @@ from autopep695.check import CheckPEP695Visitor
 from autopep695.format import PEP695Formatter
 from autopep695.ux import init_logging, format_special
 from autopep695.errors import ParsingError
+from autopep695.base import RemoveAssignments
 
 if t.TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +53,7 @@ def format_code(
     unsafe: bool,
     remove_variance: bool,
     remove_private: bool,
+    keep_assignments: bool,
 ) -> str:
     tree = _file_aware_parse_code(code, file_path)
     transformer = PEP695Formatter(
@@ -61,12 +63,21 @@ def format_code(
         remove_private=remove_private,
     )
     new_tree = tree.visit(transformer)
+    if not keep_assignments:
+        new_tree = new_tree.visit(
+            RemoveAssignments(set(transformer.unused_assignments.values()))
+        )
 
     return new_tree.code
 
 
 def _format_file(
-    path: Path, *, unsafe: bool, remove_variance: bool, remove_private: bool
+    path: Path,
+    *,
+    unsafe: bool,
+    remove_variance: bool,
+    remove_private: bool,
+    keep_assignments: bool,
 ) -> None:
     logging.debug("Analyzing file %s", format_special(path))
     with path.open("r+", encoding="utf-8") as f:
@@ -77,6 +88,7 @@ def _format_file(
                 unsafe=unsafe,
                 remove_variance=remove_variance,
                 remove_private=remove_private,
+                keep_assignments=keep_assignments,
             )
 
         except ParsingError:  # catch the exception so the file can be skipped and the whole process isn't terminated
@@ -95,7 +107,11 @@ def _format_file(
 
 
 def _format_file_wrapper(
-    unsafe: bool, remove_variance: bool, remove_private: bool, path: Path
+    unsafe: bool,
+    remove_variance: bool,
+    remove_private: bool,
+    keep_assignments: bool,
+    path: Path,
 ) -> None:
     """
     A `_format_file` wrapper that modifes the order of arguments.
@@ -108,6 +124,7 @@ def _format_file_wrapper(
         unsafe=unsafe,
         remove_variance=remove_variance,
         remove_private=remove_private,
+        keep_assignments=keep_assignments,
     )
 
 
@@ -118,6 +135,7 @@ def _parallel_format_paths(
     unsafe: bool,
     remove_variance: bool,
     remove_private: bool,
+    keep_assignments: bool,
 ) -> None:
     if processes is None:
         processes = os.cpu_count() or 1
@@ -143,7 +161,11 @@ def _parallel_format_paths(
         logging.debug("Run with --parallel, Starting %s processes...", processes)
         pool.map(
             functools.partial(
-                _format_file_wrapper, unsafe, remove_variance, remove_private
+                _format_file_wrapper,
+                unsafe,
+                remove_variance,
+                remove_private,
+                keep_assignments,
             ),
             paths,
         )
@@ -156,6 +178,7 @@ def format_paths(
     unsafe: bool,
     remove_variance: bool,
     remove_private: bool,
+    keep_assignments: bool,
 ) -> None:
     if parallel is not False:
         _parallel_format_paths(
@@ -164,6 +187,7 @@ def format_paths(
             unsafe=unsafe,
             remove_variance=remove_variance,
             remove_private=remove_private,
+            keep_assignments=keep_assignments,
         )
 
     else:
@@ -173,6 +197,7 @@ def format_paths(
                 unsafe=unsafe,
                 remove_variance=remove_variance,
                 remove_private=remove_private,
+                keep_assignments=keep_assignments,
             )
 
 
