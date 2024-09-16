@@ -4,4 +4,4 @@
 # LICENSE file in the root directory of this source tree.
 
 # Updated automatically by the deploy workflow
-__version__ = "1.0.0"
+__version__ = "1.1.0"
