@@ -374,9 +374,9 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
 
         self._node_to_parent: dict[cst.CSTNode, cst.CSTNode] = {}
         self._scope_stack: list[ScopeContainer] = []
-        # A stack to store the class or function we are currently in
-        # When visiting a class or function, the respective node will be pushed to the stack
-        # When leaving a class or a function, we will pop from the stack
+        # A stack to store entered scopes
+        # When visiting a module, class or function, the respective container is pushed onto the stack
+        # When leaving a module, class or function, we will pop() from the stack
 
         self._unused_assignments: dict[Symbol, cst.Assign] = {}
         # Mutable mapping that maps a symbol to the Assign node that it was created in
