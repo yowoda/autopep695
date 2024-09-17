@@ -55,4 +55,7 @@ for path in paths:
         else:
             error = 1
 
+if error == 0:
+    print("All checks passed!")
+
 sys.exit(error)

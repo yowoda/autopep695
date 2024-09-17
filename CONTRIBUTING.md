@@ -41,6 +41,7 @@ The following jobs are used in the default `nox` configuration:
 - `format_fix`: Fixes formatting of the code using [`ruff`](https://docs.astral.sh/ruff/)
 - `typecheck`: Strict typechecking using [`pyright`](https://github.com/microsoft/pyright)
 - `slotscheck`: Correct slots usage checking using [`slotscheck`](https://github.com/ariebovenberg/slotscheck)
+- `copyright`: Checks whether the copyright notice is placed in all tracked files
 
 You can run individual jobs by passing job names to `uv run nox -s` like this: `uv run nox -s typecheck`.
 
