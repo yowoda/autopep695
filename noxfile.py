@@ -14,7 +14,7 @@ SCRIPT_PATHS = [
     "noxfile.py",
 ]
 
-options.sessions = ["format_fix", "typecheck", "slotscheck", "copyright"]
+options.sessions = ["format_fix", "typecheck", "slotscheck", "copyright_fix"]
 
 
 def session(
@@ -58,5 +58,5 @@ def slotscheck(session: nox.Session) -> None:
 
 
 @session()
-def copyright(session: nox.Session) -> None:
-    session.run("python", "scripts/copyright.py")
+def copyright_fix(session: nox.Session) -> None:
+    session.run("python", "scripts/copyright.py", "--fix")
