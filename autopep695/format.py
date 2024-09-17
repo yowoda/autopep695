@@ -61,7 +61,11 @@ class PEP695Formatter(BaseVisitor):
             return updated_node
 
         updated_node = ensure_type(
-            updated_node.visit(CleanNameTransformer(type_collection, True, True)),
+            updated_node.visit(
+                CleanNameTransformer(
+                    type_collection, self._remove_variance, self._remove_private
+                )
+            ),
             cst.FunctionDef,
         )
         return self.add_typeparameters(
