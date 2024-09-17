@@ -57,6 +57,6 @@ def slotscheck(session: nox.Session) -> None:
     session.run("python", "-m", "slotscheck", "-m", "autopep695")
 
 
-@nox.session()
+@session()
 def copyright(session: nox.Session) -> None:
     session.run("python", "scripts/copyright.py")
