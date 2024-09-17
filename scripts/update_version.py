@@ -12,9 +12,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument("type", choices=["major", "minor", "patch"])
 parser.add_argument("increment")
 
-_noop = lambda n: n
-_increment = lambda n: str(int(n) + 1)
-_reset = lambda _: "0"
+
+def _noop(n: str) -> str:
+    return n
+
+
+def _increment(n: str) -> str:
+    return str(int(n) + 1)
+
+
+def _reset(n: str) -> str:
+    return "0"
+
 
 ACTIONS = {
     "major": (_increment, _reset, _reset),
@@ -46,6 +55,7 @@ def run(version_type: str, increment: str) -> None:
     updated_file_content = VERSION_REGEX.sub(f'__version__ = "{new_version}"', content)
     with open("autopep695/__init__.py", "w") as fp:
         fp.write(updated_file_content)
+
 
 if __name__ == "__main__":
     args = parser.parse_args()

@@ -9,16 +9,15 @@ import sys
 
 from pathlib import Path
 
-COPYRIGHT = "\n".join(
-    line for line in Path(__file__).read_text().splitlines()[:4]
-)
+COPYRIGHT = "\n".join(line for line in Path(__file__).read_text().splitlines()[:4])
 
 parser = argparse.ArgumentParser("Copyright analysis")
 parser.add_argument(
-    "-f", "--fix",
+    "-f",
+    "--fix",
     action="store_true",
     required=False,
-    help="Whether to place a short copyright notice at the start of each file"
+    help="Whether to place a short copyright notice at the start of each file",
 )
 
 args = parser.parse_args()
@@ -32,7 +31,8 @@ output = subprocess.run(
 paths = (
     path
     for line in output.stdout.splitlines()
-    if (path := Path(line)) if path.is_file() and path.suffix == ".py"
+    if (path := Path(line))
+    if path.is_file() and path.suffix == ".py"
 )
 
 error = 0

@@ -42,6 +42,7 @@ The following jobs are used in the default `nox` configuration:
 - `typecheck`: Strict typechecking using [`pyright`](https://github.com/microsoft/pyright)
 - `slotscheck`: Correct slots usage checking using [`slotscheck`](https://github.com/ariebovenberg/slotscheck)
 - `copyright`: Checks whether the copyright notice is placed in all tracked files
+- `test`: Checks whether all the tests are passing using [`pytest`](https://docs.pytest.org/en/stable/)
 
 You can run individual jobs by passing job names to `uv run nox -s` like this: `uv run nox -s typecheck`.
 
