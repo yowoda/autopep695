@@ -37,6 +37,15 @@ dev-typecheck = [
     { name = "pyright" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "flit" },
+    { name = "nox" },
+    { name = "pyright" },
+    { name = "ruff" },
+    { name = "slotscheck" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "colorama", specifier = ">=0.4.6,<1" },
@@ -47,6 +56,15 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev-format'", specifier = ">=0.6.3,<0.7" },
     { name = "slotscheck", marker = "extra == 'dev-slotscheck'", specifier = ">=0.19.0,<1" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "flit", specifier = "==3.9.0" },
+    { name = "nox", specifier = "==2024.4.15" },
+    { name = "pyright", specifier = "==1.1.380" },
+    { name = "ruff", specifier = ">=0.6.3,<0.7" },
+    { name = "slotscheck", specifier = ">=0.19.0,<1" },
 ]
 
 [[package]]

@@ -173,3 +173,7 @@ class Hello[K, V](t.MutableMapping[K, V]):
 - Does not neccesarily follow the style of your next best linter
 
 It is best to format the code with a tool like [`ruff`](https://docs.astral.sh/ruff/) after running `autopep695 format`.
+
+# Contributing to `autopep695`
+
+If you would like to contribute, please read the [contributing manual](https://github.com/yowoda/autopep695/blob/master/CONTRIBUTING.md)
