@@ -26,3 +26,6 @@ class TypeParamMismatch(Exception):
 
     def __init__(self, arg_name: str) -> None:
         self.arg_name = arg_name
+
+
+class InvalidTypeParamConstructor(Exception): ...

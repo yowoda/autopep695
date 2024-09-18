@@ -24,7 +24,7 @@ from autopep695.symbols import (
 )
 from autopep695.aliases import AliasCollection, get_qualified_name
 from autopep695.ux import format_special
-from autopep695.errors import TypeParamMismatch
+from autopep695.errors import TypeParamMismatch, InvalidTypeParamConstructor
 from autopep695.helpers import ensure_type, make_clean_name
 
 if t.TYPE_CHECKING:
@@ -149,6 +149,9 @@ class TypeVarInfo(TypingParameterClassInfo[TypeVarSymbol]):
         self, name: str, arguments: t.Sequence[cst.Arg]
     ) -> TypeVarSymbol:
         args, kwargs = _get_args_kwargs(arguments)
+        if not args:
+            raise InvalidTypeParamConstructor
+
         arg_name = cst.ensure_type(args[0], cst.SimpleString).raw_value
         if arg_name != name:
             raise TypeParamMismatch(arg_name)
@@ -181,6 +184,9 @@ class ParamSpecInfo(TypingParameterClassInfo[ParamSpecSymbol]):
         self, name: str, arguments: t.Sequence[cst.Arg]
     ) -> ParamSpecSymbol:
         args, kwargs = _get_args_kwargs(arguments)
+        if not args:
+            raise InvalidTypeParamConstructor
+
         arg_name = cst.ensure_type(args[0], cst.SimpleString).raw_value
         if arg_name != name:
             raise TypeParamMismatch(arg_name)
@@ -210,6 +216,9 @@ class TypeVarTupleInfo(TypingParameterClassInfo[TypeVarTupleSymbol]):
         self, name: str, arguments: t.Sequence[cst.Arg]
     ) -> TypeVarTupleSymbol:
         args, kwargs = _get_args_kwargs(arguments)
+        if not args:
+            raise InvalidTypeParamConstructor
+
         arg_name = cst.ensure_type(args[0], cst.SimpleString).raw_value
         if arg_name != name:
             raise TypeParamMismatch(arg_name)
@@ -480,6 +489,12 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
                 except TypeParamMismatch as e:
                     logging.error(
                         f"Type Error in {format_special(self._file_path)}: Can't assign variable {var_name} to {info.name}({e.arg_name!r})"
+                    )
+                    return False
+
+                except InvalidTypeParamConstructor:
+                    logging.error(
+                        f"Type Error in {format_special(self._file_path)}: {info.name}() constructor requires at least a 'name' argument"
                     )
                     return False
 
