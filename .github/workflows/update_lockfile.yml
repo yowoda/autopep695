@@ -2,7 +2,7 @@ name: Update uv lockfile
 
 on: 
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, labeled]
 
 permissions:
   contents: write
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   update:
-    if: ${{ github.actor == 'dependabot[bot]' && startsWith(github.event.pull_request.title, 'Bump')}}
+    if: ${{ (github.actor == 'dependabot[bot]' && startsWith(github.event.pull_request.title, 'Bump')) || (github.event.action == 'labeled' && github.event.label.name == 'requires-lockfile-update') }}
     name: Update uv lockfile
     runs-on: ubuntu-latest
 
