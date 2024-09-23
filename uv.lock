@@ -56,7 +56,7 @@ requires-dist = [
     { name = "flit", marker = "extra == 'dev-release'", specifier = "==3.9.0" },
     { name = "libcst", specifier = ">=1.4.0" },
     { name = "nox", marker = "extra == 'dev'", specifier = "==2024.4.15" },
-    { name = "pyright", marker = "extra == 'dev-typecheck'", specifier = "==1.1.380" },
+    { name = "pyright", marker = "extra == 'dev-typecheck'", specifier = "==1.1.381" },
     { name = "pytest", marker = "extra == 'dev-test'", specifier = ">=8.3.3,<9" },
     { name = "ruff", marker = "extra == 'dev-format'", specifier = ">=0.6.3,<0.7" },
     { name = "slotscheck", marker = "extra == 'dev-slotscheck'", specifier = ">=0.19.0,<1" },
@@ -67,7 +67,7 @@ requires-dist = [
 dev = [
     { name = "flit", specifier = "==3.9.0" },
     { name = "nox", specifier = "==2024.4.15" },
-    { name = "pyright", specifier = "==1.1.380" },
+    { name = "pyright", specifier = "==1.1.381" },
     { name = "pytest", specifier = ">=8.3.3,<9" },
     { name = "ruff", specifier = ">=0.6.3,<0.7" },
     { name = "slotscheck", specifier = ">=0.19.0,<1" },
@@ -351,14 +351,14 @@ wheels = [
 
 [[package]]
 name = "pyright"
-version = "1.1.380"
+version = "1.1.381"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nodeenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/bc/3bb71d02125dae6730d64bb32571c0eda5e5d86483b198b7f6dd82c49c6f/pyright-1.1.380.tar.gz", hash = "sha256:e6ceb1a5f7e9f03106e0aa1d6fbb4d97735a5e7ffb59f3de6b2db590baf935b2", size = 17487 }
+sdist = { url = "https://files.pythonhosted.org/packages/10/f4/8e2374423280cfb221a8eba3cb13d39276a05e592fea36bc06d5feb18c33/pyright-1.1.381.tar.gz", hash = "sha256:314cf0c1351c189524fb10c7ac20688ecd470e8cc505c394d642c9c80bf7c3a5", size = 17488 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/fc/527c58a3b66d5a16dbb124e1c40cf9f207147f5a36f224fb29eb786a0763/pyright-1.1.380-py3-none-any.whl", hash = "sha256:a6404392053d8848bacc7aebcbd9d318bb46baf1a1a000359305481920f43879", size = 18219 },
+    { url = "https://files.pythonhosted.org/packages/2f/c0/fec7607edc2459816c49815cd5dac67b28c702ed497102118cdc2757cc8d/pyright-1.1.381-py3-none-any.whl", hash = "sha256:5dc0aa80a265675d36abab59c674ae01dbe476714f91845b61b841d34aa99081", size = 18221 },
 ]
 
 [[package]]
