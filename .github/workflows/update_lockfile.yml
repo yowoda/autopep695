@@ -1,0 +1,33 @@
+name: Update uv lockfile
+
+on: 
+  pull_request:
+    types: [opened, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    if: ${{ github.actor == 'dependabot[bot]' && startsWith(github.event.pull_request.title, 'Bump')}}
+    name: Update uv lockfile
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Update uv.lock
+        run: uv lock --upgrade-package `cut -d ' ' -f2 <<< '${{ github.event.pull_request.title }}'`
+
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update uv lockfile"
+          file_pattern: "uv.lock"
