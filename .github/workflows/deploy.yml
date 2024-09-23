@@ -36,6 +36,13 @@ jobs:
           output=$(python scripts/update_version.py ${{ inputs.version_type }} ${{ inputs.increment }})
           echo "VERSION=$output" >> $GITHUB_OUTPUT
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Update lockfile
+        run: |
+          uv lock --upgrade-package autopep695
+
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
