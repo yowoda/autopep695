@@ -1,0 +1,28 @@
+name: Changelog check
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, opened, reopened, synchronize]
+    branches:
+      - master
+
+jobs:
+  check-change-documented:
+    if: github.event.pull_request.user.type != 'Bot' && !contains(github.event.pull_request.labels.*.name, 'skip-changelog-check')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if the change has been documented
+        run: |
+          PR_NUMBER=${{ github.event.number }}
+
+          if [ -n "$(compgen -G "changes/${PR_NUMBER}.*.md")" ]; then
+            echo "Change has been documented"
+            exit 0
+          fi
+
+          echo "Change hasn't been documented"
+          exit 1

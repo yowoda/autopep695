@@ -43,10 +43,15 @@ jobs:
         run: |
           uv lock --upgrade-package autopep695
 
+      - name: Generate Changelogs
+        run: |
+          pip install ".[dev.changelog]"
+          towncrier build --yes --version ${{ steps.update-version.outputs.VERSION }}
+
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Bump version"
+          commit_message: "Bump version, refresh changelog"
           file_pattern: "autopep695/*.py"
 
       - name: Upload to PyPI
@@ -56,3 +61,21 @@ jobs:
         run: |
           pip install ".[dev.release]"
           flit publish
+
+      - name: Create Tag
+        run: |
+          git tag ${{ steps.update-version.outputs.VERSION }}
+          git push origin ${{ steps.update-version.outputs.VERSION }}
+
+      - name: Prepare Release Description
+        run: |
+          tail -n +3 CHANGES.md > CHANGES.tmp.md
+          sed -i '1s/^/**Install this version using:**\n`pip install autopep695==${{ steps.update-version.outputs.VERSION }}`\n\n/' CHANGES.tmp.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          name: "v${{ steps.update-version.outputs.VERSION }}"
+          tag_name: "refs/tags/${{ steps.update-version.outputs.VERSION }}"
+          body_path: CHANGES.tmp.md
