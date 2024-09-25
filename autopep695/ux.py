@@ -8,6 +8,8 @@ from __future__ import annotations
 import logging
 import typing as t
 
+from autopep695 import __version__
+
 if t.TYPE_CHECKING:
     from pathlib import Path
 
@@ -53,3 +55,23 @@ def init_logging(debug: bool = False, silent: bool = False) -> None:
 # Unfortunately the pathlib.Path implementation can not be subclassed as the factory is platform-dependent
 def format_special(path: t.Union[Path, str], wrap: str = "'") -> str:
     return f"{wrap}{BOLD}{BLUE}{path}{RESET}{wrap}"
+
+
+def create_hyperlink(uri: str, label: str) -> str:
+    return f"\33[1m\033]8;;{uri}\033\\{label}\033]8;;\033\\\33[0m"
+
+
+def get_system_info() -> str:
+    import os
+    import platform
+
+    path = os.path.abspath(os.path.dirname(__file__))
+    py_impl = platform.python_implementation()
+    py_ver = platform.python_version()
+    py_compiler = platform.python_compiler()
+    plat_info = platform.uname()
+    return (
+        f"autopep695 {__version__} at {path}\n"
+        f"{py_impl} {py_ver} {py_compiler}\n"
+        f"{plat_info.system} {plat_info.version} {plat_info.machine}"
+    )

@@ -11,8 +11,15 @@ from pathlib import Path
 
 from colorama import just_fix_windows_console
 
-from autopep695 import analyzer, __version__
-from autopep695.ux import init_logging, RED, RESET, BOLD, format_special
+from autopep695 import analyzer
+from autopep695.ux import (
+    init_logging,
+    RED,
+    RESET,
+    BOLD,
+    format_special,
+    get_system_info,
+)
 from autopep695.errors import InvalidPath
 
 INCLUDE_PATTERNS: t.Final[t.Sequence[str]] = ("*.py", "*.pyi")
@@ -261,14 +268,4 @@ def main() -> None:
             sys.exit(1)
 
     elif args.subparser == "info":
-        import os
-        import platform
-
-        path = os.path.abspath(os.path.dirname(__file__))
-        py_impl = platform.python_implementation()
-        py_ver = platform.python_version()
-        py_compiler = platform.python_compiler()
-        plat_info = platform.uname()
-        print(f"autopep695 {__version__} at {path}")
-        print(f"{py_impl} {py_ver} {py_compiler}")
-        print(f"{plat_info.system} {plat_info.version} {plat_info.machine}")
+        print(get_system_info())
