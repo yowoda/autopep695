@@ -1,0 +1,1 @@
+Empty type parameter constructors such as `TypeVar()` are now detected and reported.
