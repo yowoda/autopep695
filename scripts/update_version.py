@@ -5,6 +5,7 @@
 
 import argparse
 import re
+import sys
 
 VERSION_REGEX = re.compile(r"__version__\s*=\s*\"(?P<version>\d+.\d+.\d+)\"")
 
@@ -55,6 +56,8 @@ def run(version_type: str, increment: str) -> None:
     updated_file_content = VERSION_REGEX.sub(f'__version__ = "{new_version}"', content)
     with open("autopep695/__init__.py", "w") as fp:
         fp.write(updated_file_content)
+
+    sys.stdout.write(new_version)
 
 
 if __name__ == "__main__":
