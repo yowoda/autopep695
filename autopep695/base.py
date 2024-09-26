@@ -523,10 +523,15 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
         return original_node
 
     def _assign_is_typealias(self, node: cst.AnnAssign) -> bool:
-        if not m.matches(node.annotation, m.Annotation(m.Attribute() | m.Name())):
-            return False
+        annotation = node.annotation.annotation
+        if isinstance(annotation, (cst.Attribute, cst.Name)):
+            name = get_qualified_name(annotation)
 
-        name = get_qualified_name(node.annotation.annotation)
+        elif isinstance(annotation, cst.SimpleString):
+            name = annotation.raw_value
+
+        else:
+            return False
 
         return name in self.current_typecollection.get(TypeAliasInfo).aliases
 
