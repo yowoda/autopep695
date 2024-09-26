@@ -57,6 +57,17 @@ def format_special(path: t.Union[Path, str], wrap: str = "'") -> str:
     return f"{wrap}{BOLD}{BLUE}{path}{RESET}{wrap}"
 
 
+def format_success_count(count: int) -> str:
+    color = GREEN if count > 0 else RED
+    return f"{color}{count}{RESET}"
+
+
+def format_error_count(count: int) -> str:
+    color = RED if count > 0 else GREEN
+
+    return f"{color}{count}{RESET}"
+
+
 def create_hyperlink(uri: str, label: str) -> str:
     return f"\33[1m\033]8;;{uri}\033\\{label}\033]8;;\033\\\33[0m"
 
