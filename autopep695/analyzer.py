@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import enum
 import functools
 import multiprocessing
 import os
@@ -13,11 +14,12 @@ import logging
 import traceback
 import typing as t
 from urllib.parse import urlencode
+from dataclasses import dataclass
 
 import libcst as cst
 from libcst.metadata import PositionProvider
 
-from autopep695.check import CheckPEP695Visitor
+from autopep695.check import CheckPEP695Visitor, Diagnostic
 from autopep695.format import PEP695Formatter
 from autopep695.ux import (
     init_logging,
@@ -30,6 +32,24 @@ from autopep695.base import RemoveAssignments
 
 if t.TYPE_CHECKING:
     from pathlib import Path
+
+
+class FileStatus(enum.Enum):
+    SUCCESS = enum.auto()
+    """All PEP 695 checks passed"""
+    FAILED = enum.auto()
+    """The file does not conform to PEP 695"""
+    INTERNAL_ERROR = enum.auto()
+    """There was an internal error while processing the file"""
+    PARSING_ERROR = enum.auto()
+    """The file could not be parsed"""
+
+
+@dataclass
+class FileDiagnostic:
+    status: FileStatus
+    errors: list[Diagnostic]
+    silent_errors: int
 
 
 def _show_debug_traceback_note() -> str:
@@ -79,6 +99,11 @@ def format_code(
     remove_private: bool,
     keep_assignments: bool,
 ) -> str:
+    """
+    Format `code` according to the PEP 695 specification. `file_path` is not validated, which means it does not have
+    to represent an existing file in case you're just formatting a string of code. `unsafe`, `remove_variance`, `remove_private`
+    and `keep_assignments` have the same effect as in the command-line.
+    """
     tree = _file_aware_parse_code(code, file_path)
     transformer = PEP695Formatter(
         file_path,
@@ -235,7 +260,17 @@ def format_paths(
             )
 
 
-def _check_code(code: str, *, file_path: Path, silent: bool) -> int:
+def check_code(
+    code: str, *, file_path: Path, silent: bool
+) -> tuple[list[Diagnostic], int]:
+    """
+    Check whether `code` conforms to autopep695. `file_path` is used purely for formatting diagnostics,
+    whether it points to a valid file or not is not checked, so you may leave out the semantic value of this parameter
+    if you only want to check the given code string. `silent` will have the same effect as in the command-line
+
+    Returns a tuple of length 2, the first element being the list of `Diagnostic` objects and the second element being
+    the number of silent errors.
+    """
     tree = _file_aware_parse_code(code, file_path)
     if not silent:
         setattr(CheckPEP695Visitor, "METADATA_DEPENDENCIES", (PositionProvider,))
@@ -244,18 +279,18 @@ def _check_code(code: str, *, file_path: Path, silent: bool) -> int:
     transformer = CheckPEP695Visitor(file_path, silent=silent)
     tree.visit(transformer)
 
-    return transformer.errors
+    return transformer.diagnostics, transformer.silent_errors
 
 
-def _check_file(path: Path, *, silent: bool) -> int:
+def _check_file(path: Path, *, silent: bool) -> FileDiagnostic:
     logging.debug("Analyzing file %s", format_special(path))
     try:
-        return _check_code(
+        errors, silent_errors = check_code(
             path.read_text(encoding="utf-8"), file_path=path, silent=silent
         )
 
     except ParsingError:
-        return 0
+        return FileDiagnostic(FileStatus.PARSING_ERROR, [], 0)
 
     except Exception as e:
         github_report_note = _show_internal_error_report_note(
@@ -267,8 +302,14 @@ def _check_file(path: Path, *, silent: bool) -> int:
             f"Internal error while checking code in {format_special(path)}\n{github_report_note}\n{_show_debug_traceback_note()}"
         )
         logging.debug("Full traceback for the error above:", exc_info=e)
-        return 0
+        return FileDiagnostic(FileStatus.INTERNAL_ERROR, [], 0)
+
+    else:
+        status = (
+            FileStatus.FAILED if (errors or silent_errors > 0) else FileStatus.SUCCESS
+        )
+        return FileDiagnostic(status, errors, silent_errors)
 
 
-def check_paths(paths: t.Iterable[Path], *, silent: bool) -> int:
-    return sum(_check_file(p, silent=silent) for p in paths)
+def check_paths(paths: t.Iterable[Path], *, silent: bool) -> list[FileDiagnostic]:
+    return [_check_file(p, silent=silent) for p in paths]

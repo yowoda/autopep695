@@ -74,21 +74,26 @@ class FixClassDefFormattingTransformer(
 
 class CheckPEP695Visitor(BaseVisitor):
     def __init__(self, file_path: Path, silent: bool) -> None:
-        self._errors = 0
+        self._silent_errors = 0
         self._silent = silent
         self._empty_module = cst.Module(body=())
+        self._diagnostics: list[Diagnostic] = []
 
         super().__init__(file_path=file_path)
 
     @property
-    def errors(self) -> int:
-        return self._errors
+    def silent_errors(self) -> int:
+        return self._silent_errors
+
+    @property
+    def diagnostics(self) -> list[Diagnostic]:
+        return self._diagnostics
 
     def _gen_diagnostic(
         self, old_node: cst.CSTNode, message: str, new_node: cst.CSTNode
     ) -> t.Optional[Diagnostic]:
-        self._errors += 1
         if self._silent:
+            self._silent_errors += 1
             return
 
         metadata = self.get_metadata(PositionProvider, old_node)
@@ -121,7 +126,7 @@ class CheckPEP695Visitor(BaseVisitor):
             return
 
         if self._silent:
-            self._errors += 1
+            self._silent_errors += 1
             return
 
         report = self._gen_diagnostic(
@@ -130,6 +135,7 @@ class CheckPEP695Visitor(BaseVisitor):
             new_node,
         )
         assert report is not None
+        self._diagnostics.append(report)
         logging.error("%s", report.format())
         logging.warning(
             f"Type assignments using the {format_special('type', '`')} keyword are not equivalent to {format_special('TypeAlias', '`')} "
@@ -150,7 +156,7 @@ class CheckPEP695Visitor(BaseVisitor):
             return
 
         if self._silent:
-            self._errors += 1
+            self._silent_errors += 1
             return
 
         new_node = t.cast(
@@ -168,6 +174,7 @@ class CheckPEP695Visitor(BaseVisitor):
 
         diagnostic = self._gen_diagnostic(node, message, new_node)
         assert diagnostic is not None
+        self._diagnostics.append(diagnostic)
         logging.error("%s", diagnostic.format())
 
     def visit_ClassDef(self, node: cst.ClassDef) -> None:

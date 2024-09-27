@@ -6,8 +6,10 @@
 import argparse
 import logging
 import sys
+import textwrap
 import typing as t
 from pathlib import Path
+from collections import Counter
 
 from colorama import just_fix_windows_console
 
@@ -17,8 +19,11 @@ from autopep695.ux import (
     RED,
     RESET,
     BOLD,
+    GREEN,
     format_special,
     get_system_info,
+    format_error_count,
+    format_success_count,
 )
 from autopep695.errors import InvalidPath
 
@@ -225,7 +230,7 @@ def main() -> None:
         )
 
         try:
-            errors = analyzer.check_paths(paths, silent=args.silent)
+            diagnostics = analyzer.check_paths(paths, silent=args.silent)
 
         except InvalidPath as e:
             logging.error(
@@ -233,15 +238,33 @@ def main() -> None:
             )
             sys.exit(1)
 
-        if errors == 0:
-            print("All checks passed!")
+        counter = Counter(d.status for d in diagnostics)
+        successful_files = counter[analyzer.FileStatus.SUCCESS]
+        failed_files = counter[analyzer.FileStatus.FAILED]
+        unparsable_files = counter[analyzer.FileStatus.PARSING_ERROR]
+        internal_error_files = counter[analyzer.FileStatus.INTERNAL_ERROR]
+
+        if len(diagnostics) == successful_files:
+            print(f"{BOLD}{GREEN}All checks passed!{RESET}")
 
         else:
-            suffix = "s" if errors > 1 else ""
-            pronoun = "them" if errors > 1 else "it"
-            print(
-                f"Found {BOLD}{RED}{errors}{RESET} error{suffix}. Fix {pronoun} using {format_special('autopep695 format', '`')}."
+            errors = sum(len(d.errors) + d.silent_errors for d in diagnostics)
+            suffix = "s" if errors != 1 else ""
+            pronoun = "them" if errors != 1 else "it"
+            files_report = (
+                f"Files that were successful: {format_success_count(successful_files)}\n"
+                f"Files that did not conform to PEP 695: {format_error_count(failed_files)}\n"
+                f"Files that triggered internal errors: {format_error_count(internal_error_files)}\n"
+                f"Files that could not be parsed: {format_error_count(unparsable_files)}\n"
+                f"Found {BOLD}{format_error_count(errors)} PEP 695-related error{suffix}."
             )
+            if errors > 0:
+                files_report += (
+                    f" Fix {pronoun} using {format_special('autopep695 format', '`')}."
+                )
+
+            print(f"{BOLD}{RED}Check was not successful:{RESET}")
+            print(textwrap.indent(files_report, " " * 2))
             sys.exit(1)
 
     elif args.subparser == "format":
