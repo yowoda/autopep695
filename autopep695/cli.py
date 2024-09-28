@@ -10,6 +10,7 @@ import textwrap
 import typing as t
 from pathlib import Path
 from collections import Counter
+from contextlib import contextmanager
 
 from colorama import just_fix_windows_console
 
@@ -53,10 +54,37 @@ EXCLUDE_PATTERNS: t.Final[t.Sequence[str]] = (
 )
 
 
+class _StdinFileWrapper:
+    def read(self, *args: t.Any, **kwargs: t.Any) -> str:
+        return sys.stdin.read()
+
+    def write(self, s: str) -> None:
+        print(s)
+
+    def seek(self, *args: t.Any, **kwargs: t.Any): ...
+    def truncate(self, *args: t.Any, **kwargs: t.Any): ...
+
+
+class _StdinPathWrapper:
+    def read_text(self, *args: t.Any, **kwargs: t.Any) -> str:
+        return sys.stdin.read()
+
+    def __repr__(self) -> str:
+        return "STDIN"
+
+    @contextmanager
+    def open(self, *args: t.Any, **kwargs: t.Any) -> t.Iterator[_StdinFileWrapper]:
+        yield _StdinFileWrapper()
+
+
 def filter_paths(
     paths: t.Iterable[Path], include: t.Iterable[str], exclude: t.Iterable[str]
 ) -> t.Iterable[Path]:
     for path in paths:
+        if repr(path) == "STDIN":
+            yield path
+            continue
+
         if not path.exists():
             raise InvalidPath(str(path))
 
@@ -86,7 +114,7 @@ def main() -> None:
         nargs="*",
         help="Paths to a directory or a file that contains code using the old type annotation syntax",
         type=Path,
-        default=[Path.cwd()],
+        default=[],
     )
     check_parser.add_argument(
         "-s",
@@ -140,7 +168,7 @@ def main() -> None:
         nargs="*",
         help="Paths to a directory or a file that contains code using the old type annotation syntax",
         type=Path,
-        default=[Path.cwd()],
+        default=[],
     )
     format_parser.add_argument(
         "-u",
@@ -218,10 +246,21 @@ def main() -> None:
 
     just_fix_windows_console()
 
+    stdin_path: t.Optional[Path] = (
+        None if sys.stdin.isatty() else t.cast(Path, _StdinPathWrapper())
+    )
+
     if args.subparser is None:
         parser.print_help()
 
-    elif args.subparser == "check":
+    if args.subparser in ("check", "format"):
+        if not args.paths and stdin_path is None:
+            args.paths = [Path.cwd()]
+
+        elif stdin_path is not None:
+            args.paths.append(stdin_path)
+
+    if args.subparser == "check":
         init_logging(debug=args.debug, silent=args.silent)
         paths = filter_paths(
             args.paths,
@@ -267,7 +306,7 @@ def main() -> None:
             print(textwrap.indent(files_report, " " * 2))
             sys.exit(1)
 
-    elif args.subparser == "format":
+    if args.subparser == "format":
         init_logging(debug=args.debug)
         paths = filter_paths(
             args.paths,
