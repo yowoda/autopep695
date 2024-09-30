@@ -94,10 +94,10 @@ def format_code(
     code: str,
     *,
     file_path: Path,
-    unsafe: bool,
-    remove_variance: bool,
-    remove_private: bool,
-    keep_assignments: bool,
+    unsafe: bool = False,
+    remove_variance: bool = False,
+    remove_private: bool = False,
+    keep_assignments: bool = False,
 ) -> str:
     """
     Format `code` according to the PEP 695 specification. `file_path` is not validated, which means it does not have
@@ -233,11 +233,11 @@ def _parallel_format_paths(
 def format_paths(
     paths: t.Iterable[Path],
     *,
-    parallel: t.Union[bool, int],
-    unsafe: bool,
-    remove_variance: bool,
-    remove_private: bool,
-    keep_assignments: bool,
+    parallel: t.Union[bool, int] = False,
+    unsafe: bool = False,
+    remove_variance: bool = False,
+    remove_private: bool = False,
+    keep_assignments: bool = False,
 ) -> None:
     if parallel is not False:
         _parallel_format_paths(
@@ -261,7 +261,7 @@ def format_paths(
 
 
 def check_code(
-    code: str, *, file_path: Path, silent: bool
+    code: str, *, file_path: Path, silent: bool = False
 ) -> tuple[list[Diagnostic], int]:
     """
     Check whether `code` conforms to autopep695. `file_path` is used purely for formatting diagnostics,
@@ -311,5 +311,7 @@ def _check_file(path: Path, *, silent: bool) -> FileDiagnostic:
         return FileDiagnostic(status, errors, silent_errors)
 
 
-def check_paths(paths: t.Iterable[Path], *, silent: bool) -> list[FileDiagnostic]:
+def check_paths(
+    paths: t.Iterable[Path], *, silent: bool = False
+) -> list[FileDiagnostic]:
     return [_check_file(p, silent=silent) for p in paths]
