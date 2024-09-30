@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   update:
-    if: ${{ (github.actor == 'dependabot[bot]' && startsWith(github.event.pull_request.title, 'Bump') && github.event.action == "opened") || (github.event.action == 'labeled' && github.event.label.name == 'requires-lockfile-update') }}
+    if: ${{ (github.actor == 'dependabot[bot]' && startsWith(github.event.pull_request.title, 'Bump') && github.event.action == 'opened') || (github.event.action == 'labeled' && github.event.label.name == 'requires-lockfile-update') }}
     name: Update uv lockfile
     runs-on: ubuntu-latest
 
