@@ -1,0 +1,13 @@
+import typing as t
+from typing_extensions import *
+
+def func[**P](callback: t.Callable[P, t.Any]):
+    ...
+
+def func[**DefaultP = ...](callback: t.Callable[DefaultP, t.Any]) -> t.Callable[DefaultP, t.Any]:
+    ...
+
+def func_with_multiple_paramspecs[**P, **DefaultP = ...](a: P, b: DefaultP):
+    ...
+
+class SomeClass[**P, **DefaultP = ...](): ...
