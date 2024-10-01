@@ -1,3 +1,8 @@
+# Copyright (c) 2024-present yowoda
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 import json
 import typing as t
 
@@ -47,7 +52,7 @@ class TestFormatCode:
                 raise RuntimeError(
                     f"{settings_path} does not contain `format` configuration"
                 )
-            
+
             if settings.get("ignore_empty_lines", False) is True:
                 input_code = remove_empty_lines(input_code)
                 expected_output = remove_empty_lines(expected_output)

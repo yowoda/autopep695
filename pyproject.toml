@@ -74,3 +74,6 @@ type = [
     { directory = "doc", name = "Documentation", showcontent = true },
     { directory = "misc", name = "Miscellaneous", showcontent = true },
 ]
+
+[tool.ruff]
+extend-exclude = ["tests/autopep695/data"]
