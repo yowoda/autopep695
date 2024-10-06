@@ -266,6 +266,7 @@ def check_code(
     file_path: Path,
     silent: bool = False,
     report_assignments: bool = False,
+    no_code: bool = False,
 ) -> tuple[list[Diagnostic], int]:
     """
     Check whether `code` conforms to autopep695. `file_path` is used purely for formatting diagnostics,
@@ -281,7 +282,7 @@ def check_code(
         tree = cst.MetadataWrapper(tree)  # type: ignore
 
     transformer = CheckPEP695Visitor(
-        file_path, silent=silent, report_assignments=report_assignments
+        file_path, silent=silent, report_assignments=report_assignments, no_code=no_code
     )
     tree.visit(transformer)
 
@@ -289,7 +290,7 @@ def check_code(
 
 
 def _check_file(
-    path: Path, *, silent: bool, report_assignments: bool
+    path: Path, *, silent: bool, report_assignments: bool, no_code: bool
 ) -> FileDiagnostic:
     logging.debug("Analyzing file %s", format_special(path))
     try:
@@ -298,6 +299,7 @@ def _check_file(
             file_path=path,
             silent=silent,
             report_assignments=report_assignments,
+            no_code=no_code,
         )
 
     except ParsingError:
@@ -323,9 +325,15 @@ def _check_file(
 
 
 def check_paths(
-    paths: t.Iterable[Path], *, silent: bool = False, report_assignments: bool = False
+    paths: t.Iterable[Path],
+    *,
+    silent: bool = False,
+    report_assignments: bool = False,
+    no_code: bool = False,
 ) -> list[FileDiagnostic]:
     return [
-        _check_file(p, silent=silent, report_assignments=report_assignments)
+        _check_file(
+            p, silent=silent, report_assignments=report_assignments, no_code=no_code
+        )
         for p in paths
     ]

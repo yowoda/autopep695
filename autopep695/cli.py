@@ -130,6 +130,12 @@ def main() -> None:
         help="Whether to report type parameter assignments.",
     )
     check_parser.add_argument(
+        "--no-code",
+        required=False,
+        action="store_true",
+        help="Whether to show the code that violates PEP 695 and the code fix",
+    )
+    check_parser.add_argument(
         "--exclude",
         nargs="+",
         help="Paths or patterns to exclude from being checked",
@@ -276,7 +282,10 @@ def main() -> None:
 
         try:
             diagnostics = analyzer.check_paths(
-                paths, silent=args.silent, report_assignments=args.report_assignments
+                paths,
+                silent=args.silent,
+                report_assignments=args.report_assignments,
+                no_code=args.no_code,
             )
 
         except InvalidPath as e:
@@ -309,6 +318,9 @@ def main() -> None:
                 files_report += (
                     f" Fix {pronoun} using {format_special('autopep695 format', '`')}."
                 )
+
+            if args.no_code:
+                print()
 
             print(f"{BOLD}{RED}Check was not successful:{RESET}")
             print(textwrap.indent(files_report, " " * 2))

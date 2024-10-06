@@ -465,7 +465,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
             import_info = self._get_import_symbols(node)
             self.current_typecollection.update_aliases_from_import_info(import_info)
 
-    def _process_typeparam_assign(self, node: cst.Assign) -> bool:
+    def _process_typeparam_assign(self, node: cst.Assign) -> t.Optional[Symbol]:
         if not m.matches(
             node,
             m.Assign(
@@ -473,7 +473,7 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
                 value=m.Call(m.Attribute() | m.Name()),
             ),
         ):
-            return False
+            return
 
         call = cst.ensure_type(node.value, cst.Call)
         target = cst.ensure_type(node.targets[0].target, cst.Name)
@@ -490,13 +490,13 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
                     logging.error(
                         f"Type Error in {format_special(self._file_path)}: Can't assign variable {var_name} to {info.name}({e.arg_name!r})"
                     )
-                    return False
+                    return
 
                 except InvalidTypeParamConstructor:
                     logging.error(
                         f"Type Error in {format_special(self._file_path)}: {info.name}() constructor requires at least a 'name' argument"
                     )
-                    return False
+                    return
 
                 if self.should_ignore_assign(node):
                     # Since we ignore a valid type parameter assignment
@@ -504,13 +504,11 @@ class BaseVisitor(m.MatcherDecoratableTransformer):
                     # it is still overriden which is why we need to remove the symbol from the mapping
                     # so it is not encounted for when we inspect the type parameters used for classes and functions later
                     info.symbols.pop(symbol.name, None)
-                    return False
+                    return
 
                 info.symbols[symbol.name] = symbol
                 self._unused_assignments[symbol] = node
-                return True
-
-        return False
+                return symbol
 
     def visit_Assign(self, node: cst.Assign) -> None:
         self._process_typeparam_assign(node)

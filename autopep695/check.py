@@ -34,15 +34,19 @@ class Diagnostic:
     file_path: Path
     line: int
     column: int
-    old_code: str
+    old_code: t.Optional[str]
     new_code: t.Optional[str]
 
     def format(self) -> str:
-        old_code_lines = self._format_code("- ", self.old_code.strip())
-        output = (
-            f"\n{format_special(self.file_path, wrap='')}:{BOLD}{YELLOW}{self.line}{RESET}:{BOLD}{YELLOW}{self.column}{RESET}: {self.message}\n"
-            + f"{BOLD}{RED}{old_code_lines}\n"
-        )
+        output = f"{format_special(self.file_path, wrap='')}:{BOLD}{YELLOW}{self.line}{RESET}:{BOLD}{YELLOW}{self.column}{RESET}: {self.message}"
+        if self.old_code is None and self.new_code is None:
+            return output
+
+        output = f"\n{output}\n"
+
+        if self.old_code is not None:
+            old_code_lines = self._format_code("- ", self.old_code.strip())
+            output += f"{BOLD}{RED}{old_code_lines}\n"
 
         if self.new_code is not None:
             new_code_lines = self._format_code("+ ", self.new_code.strip())
@@ -77,10 +81,13 @@ class FixClassDefFormattingTransformer(
 
 
 class CheckPEP695Visitor(BaseVisitor):
-    def __init__(self, file_path: Path, silent: bool, report_assignments: bool) -> None:
+    def __init__(
+        self, file_path: Path, silent: bool, report_assignments: bool, no_code: bool
+    ) -> None:
         self._silent_errors = 0
         self._silent = silent
         self._report_assignments = report_assignments
+        self._no_code = no_code
 
         self._empty_module = cst.Module(body=())
         self._diagnostics: list[Diagnostic] = []
@@ -105,28 +112,32 @@ class CheckPEP695Visitor(BaseVisitor):
         metadata = self.get_metadata(PositionProvider, old_node)
         assert isinstance(metadata, CodeRange)
         pos = metadata.start
-        old_node = cst.ensure_type(
-            old_node.visit(FixFormattingTransformer(self.current_typecollection)),
-            cst.CSTNode,
-        )
 
+        old_code: t.Optional[str] = None
         new_code: t.Optional[str] = None
 
-        if new_node is not None:
-            new_node = cst.ensure_type(
-                new_node.visit(
-                    FixClassDefFormattingTransformer(self.current_typecollection)
-                ),
+        if self._no_code is False:
+            old_node = cst.ensure_type(
+                old_node.visit(FixFormattingTransformer(self.current_typecollection)),
                 cst.CSTNode,
             )
-            new_code = self._empty_module.code_for_node(new_node)
+            old_code = self._empty_module.code_for_node(old_node)
+
+            if new_node is not None:
+                new_node = cst.ensure_type(
+                    new_node.visit(
+                        FixClassDefFormattingTransformer(self.current_typecollection)
+                    ),
+                    cst.CSTNode,
+                )
+                new_code = self._empty_module.code_for_node(new_node)
 
         return Diagnostic(
             message=message,
             file_path=self._file_path,
             line=pos.line,
             column=pos.column,
-            old_code=self._empty_module.code_for_node(old_node),
+            old_code=old_code,
             new_code=new_code,
         )
 
@@ -134,14 +145,14 @@ class CheckPEP695Visitor(BaseVisitor):
         if not self._report_assignments:
             return super().visit_Assign(node)
 
-        is_type_param_assign = self._process_typeparam_assign(node)
-        if not is_type_param_assign:
+        symbol = self._process_typeparam_assign(node)
+        if symbol is None:
             return
 
         report = self._gen_diagnostic(
             node,
             None,
-            "Type parameters should be specified within a generic class, function or type alias",
+            f"Type parameter {symbol.name!r} should be specified within a generic class, function or type alias",
         )
         if report is not None:
             self._diagnostics.append(report)
@@ -161,7 +172,7 @@ class CheckPEP695Visitor(BaseVisitor):
         report = self._gen_diagnostic(
             node,
             new_node,
-            "Found type alias declared using old TypeAlias annotation syntax",
+            f"Found type alias {new_node.name.value!r} declared using old TypeAlias annotation syntax",
         )
         assert report is not None
         self._diagnostics.append(report)
@@ -188,9 +199,11 @@ class CheckPEP695Visitor(BaseVisitor):
             self._silent_errors += 1
             return
 
-        new_node = t.cast(
-            cst.CSTNode,
-            self.add_typeparameters(
+        if self._no_code:
+            new_node = node  # it doesn't matter which node we choose here
+
+        else:
+            new_node = self.add_typeparameters(
                 node,
                 node,
                 typevars,
@@ -198,8 +211,7 @@ class CheckPEP695Visitor(BaseVisitor):
                 typevartuples,
                 remove_variance=False,
                 remove_private=False,
-            ),
-        )
+            )
 
         diagnostic = self._gen_diagnostic(node, new_node, message)
         assert diagnostic is not None
@@ -209,11 +221,13 @@ class CheckPEP695Visitor(BaseVisitor):
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
         super().visit_ClassDef(node)
         self._report_if_requires_change(
-            node, "Found generic class declared using old type parameter syntax"
+            node,
+            f"Found generic class {node.name.value!r} declared using old type parameter syntax",
         )
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         super().visit_FunctionDef(node)
         self._report_if_requires_change(
-            node, "Found generic function declared using old type parameter syntax"
+            node,
+            f"Found generic function {node.name.value!r} declared using old type parameter syntax",
         )
