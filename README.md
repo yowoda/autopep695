@@ -25,7 +25,7 @@ Check whether the code makes use of the new type parameter syntax. If not, infor
 
 `autopep695 check` accepts multiple paths either pointing to a valid directory or a valid file that contains the code to be checked. A file is valid if it has one of the following extensions: `.py`, `.pyi`. Directories are traversed recursively.
 
-You can also specify the `--silent` (`-s`) flag that silences the errors logged and only shows the number of errors reported. Add the `--report-assignments` flag to enable type parameter assignment reports. Use `--no-code` to keep the output short and concise.
+Add the `--report-assignments` flag to enable type parameter assignment reports. Use `--no-code` to keep the output short and concise by removing code suggestions. You can also specify the `--silent` (`-s`) flag to silence the errors altogether and only show the number of errors reported.
 
 ## `autopep695 format`
 Rewrite the code to the new type parameter syntax by running the `format` subcommand. This will implement all the suggestions reported in `autopep695 check`, so running `autopep695 check` after `autopep695 format` will not report any errors. `format` however does not require you to run `check` beforehand, it just matches its behaviour.
