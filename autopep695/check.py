@@ -35,16 +35,20 @@ class Diagnostic:
     line: int
     column: int
     old_code: str
-    new_code: str
+    new_code: t.Optional[str]
 
     def format(self) -> str:
         old_code_lines = self._format_code("- ", self.old_code.strip())
-        new_code_lines = self._format_code("+ ", self.new_code.strip())
-        return (
+        output = (
             f"\n{format_special(self.file_path, wrap='')}:{BOLD}{YELLOW}{self.line}{RESET}:{BOLD}{YELLOW}{self.column}{RESET}: {self.message}\n"
             + f"{BOLD}{RED}{old_code_lines}\n"
-            + f"{GREEN}{new_code_lines}{RESET}\n"
         )
+
+        if self.new_code is not None:
+            new_code_lines = self._format_code("+ ", self.new_code.strip())
+            output += f"{GREEN}{new_code_lines}{RESET}\n"
+
+        return output
 
     def _format_code(self, leading_text: str, code: str) -> str:
         return "\n".join(f"{leading_text}{line}" for line in code.splitlines())
@@ -73,9 +77,11 @@ class FixClassDefFormattingTransformer(
 
 
 class CheckPEP695Visitor(BaseVisitor):
-    def __init__(self, file_path: Path, silent: bool) -> None:
+    def __init__(self, file_path: Path, silent: bool, report_assignments: bool) -> None:
         self._silent_errors = 0
         self._silent = silent
+        self._report_assignments = report_assignments
+
         self._empty_module = cst.Module(body=())
         self._diagnostics: list[Diagnostic] = []
 
@@ -90,7 +96,7 @@ class CheckPEP695Visitor(BaseVisitor):
         return self._diagnostics
 
     def _gen_diagnostic(
-        self, old_node: cst.CSTNode, message: str, new_node: cst.CSTNode
+        self, old_node: cst.CSTNode, new_node: t.Optional[cst.CSTNode], message: str
     ) -> t.Optional[Diagnostic]:
         if self._silent:
             self._silent_errors += 1
@@ -103,20 +109,43 @@ class CheckPEP695Visitor(BaseVisitor):
             old_node.visit(FixFormattingTransformer(self.current_typecollection)),
             cst.CSTNode,
         )
-        new_node = cst.ensure_type(
-            new_node.visit(
-                FixClassDefFormattingTransformer(self.current_typecollection)
-            ),
-            cst.CSTNode,
-        )
+
+        new_code: t.Optional[str] = None
+
+        if new_node is not None:
+            new_node = cst.ensure_type(
+                new_node.visit(
+                    FixClassDefFormattingTransformer(self.current_typecollection)
+                ),
+                cst.CSTNode,
+            )
+            new_code = self._empty_module.code_for_node(new_node)
+
         return Diagnostic(
             message=message,
             file_path=self._file_path,
             line=pos.line,
             column=pos.column,
             old_code=self._empty_module.code_for_node(old_node),
-            new_code=self._empty_module.code_for_node(new_node),
+            new_code=new_code,
         )
+
+    def visit_Assign(self, node: cst.Assign) -> None:
+        if not self._report_assignments:
+            return super().visit_Assign(node)
+
+        is_type_param_assign = self._process_typeparam_assign(node)
+        if not is_type_param_assign:
+            return
+
+        report = self._gen_diagnostic(
+            node,
+            None,
+            "Type parameters should be specified within a generic class, function or type alias",
+        )
+        if report is not None:
+            self._diagnostics.append(report)
+            logging.error(report.format())
 
     def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
         new_node = self.process_TypeAlias_node(
@@ -131,12 +160,12 @@ class CheckPEP695Visitor(BaseVisitor):
 
         report = self._gen_diagnostic(
             node,
-            "Found type alias declared using old TypeAlias annotation syntax",
             new_node,
+            "Found type alias declared using old TypeAlias annotation syntax",
         )
         assert report is not None
         self._diagnostics.append(report)
-        logging.error("%s", report.format())
+        logging.error(report.format())
         logging.warning(
             f"Type assignments using the {format_special('type', '`')} keyword are not equivalent to {format_special('TypeAlias', '`')} "
             f"at runtime. A rewrite using {format_special('autopep695 format --unsafe', '`')} can have side-effects.\n"
@@ -172,7 +201,7 @@ class CheckPEP695Visitor(BaseVisitor):
             ),
         )
 
-        diagnostic = self._gen_diagnostic(node, message, new_node)
+        diagnostic = self._gen_diagnostic(node, new_node, message)
         assert diagnostic is not None
         self._diagnostics.append(diagnostic)
         logging.error("%s", diagnostic.format())

@@ -124,6 +124,12 @@ def main() -> None:
         help="Whether to silent the error reports.",
     )
     check_parser.add_argument(
+        "--report-assignments",
+        required=False,
+        action="store_true",
+        help="Whether to report type parameter assignments.",
+    )
+    check_parser.add_argument(
         "--exclude",
         nargs="+",
         help="Paths or patterns to exclude from being checked",
@@ -269,7 +275,9 @@ def main() -> None:
         )
 
         try:
-            diagnostics = analyzer.check_paths(paths, silent=args.silent)
+            diagnostics = analyzer.check_paths(
+                paths, silent=args.silent, report_assignments=args.report_assignments
+            )
 
         except InvalidPath as e:
             logging.error(
