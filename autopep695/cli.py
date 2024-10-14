@@ -319,7 +319,7 @@ def main() -> None:
                     f" Fix {pronoun} using {format_special('autopep695 format', '`')}."
                 )
 
-            if args.no_code:
+            if args.no_code and args.silent is False:
                 print()
 
             print(f"{BOLD}{RED}Check was not successful:{RESET}")
