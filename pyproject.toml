@@ -32,7 +32,7 @@ Repository = "https://github.com/yowoda/autopep695"
 autopep695 = "autopep695.cli:main"
 
 [project.optional-dependencies]
-dev = ["nox==2024.4.15"]
+dev = ["nox==2024.10.9"]
 "dev.format" = ["ruff>=0.6.3, <0.7"]
 "dev.typecheck" =  ["pyright==1.1.384"]
 "dev.release" = ["flit==3.9.0"]
@@ -45,7 +45,7 @@ name = "autopep695"
 
 [tool.uv]
 dev-dependencies = [
-    "nox==2024.4.15",
+    "nox==2024.10.9",
     "ruff>=0.6.3, <0.7",
     "pyright==1.1.384",
     "flit==3.9.0",
