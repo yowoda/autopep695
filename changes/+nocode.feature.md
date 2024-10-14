@@ -1,1 +1,0 @@
-Added the `--no-code` flag to the `check` command to prevent code from being shown.
