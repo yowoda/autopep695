@@ -33,7 +33,7 @@ autopep695 = "autopep695.cli:main"
 
 [project.optional-dependencies]
 dev = ["nox==2024.10.9"]
-"dev.format" = ["ruff>=0.6.3, <0.8"]
+"dev.format" = ["ruff>=0.6.3, <0.9"]
 "dev.typecheck" =  ["pyright==1.1.384"]
 "dev.release" = ["flit==3.9.0"]
 "dev.slotscheck" = ["slotscheck>=0.19.0, <1"]
@@ -46,7 +46,7 @@ name = "autopep695"
 [tool.uv]
 dev-dependencies = [
     "nox==2024.10.9",
-    "ruff>=0.6.3, <0.8",
+    "ruff>=0.6.3, <0.9",
     "pyright==1.1.384",
     "flit==3.9.0",
     "slotscheck>=0.19.0, <1",
